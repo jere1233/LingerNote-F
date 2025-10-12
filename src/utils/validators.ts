@@ -1,3 +1,5 @@
+// src/utils/validators.ts
+
 export const validators = {
   email: (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -25,8 +27,11 @@ export const validators = {
     return { valid: true };
   },
 
-  fullName: (name: string): boolean => {
-    return name.trim().length >= 2;
+  fullName: (name: string): { valid: boolean; message?: string } => {
+    if (name.trim().length < 2) {
+      return { valid: false, message: 'Name must be at least 2 characters' };
+    }
+    return { valid: true };
   },
 
   otp: (otp: string): boolean => {
@@ -55,8 +60,9 @@ export const detectInputType = (input: string): 'email' | 'phone' | 'unknown' =>
     return 'email';
   }
   
-  // Check if it's all digits (phone number)
-  if (/^\d+$/.test(trimmed)) {
+  // Check if it's a phone number (digits with optional formatting)
+  const cleaned = trimmed.replace(/\D/g, '');
+  if (cleaned.length >= 9 && cleaned.length <= 15 && /[\d\s\-\(\)\+]/.test(trimmed)) {
     return 'phone';
   }
   

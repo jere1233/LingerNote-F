@@ -17,6 +17,8 @@ import AuthButton from '../../components/auth/AuthButton';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { validateEmailOrPhone } from '../../utils/validators';
+import AuthAPI from '../../services/api/auth.api';
+import { ApiError } from '../../services/api/api.client';
 
 type ForgotPasswordScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'ForgotPassword'>;
@@ -47,30 +49,34 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
     setLoading(true);
 
     try {
-      // TODO: Replace with actual API call
-      // const response = await AuthAPI.forgotPassword({ emailOrPhone });
+      const response = await AuthAPI.forgotPassword({ emailOrPhone });
 
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (response.success) {
+        // Navigate to OTP verification
+        const phoneNumber = emailOrPhoneValidation.type === 'phone'
+          ? `+254${emailOrPhone}`
+          : emailOrPhone;
 
-      // Navigate to OTP verification
-      if (emailOrPhoneValidation.type === 'phone') {
         navigation.navigate('OTPVerification', {
-          phoneNumber: '+254' + emailOrPhone,
-          isSignup: false,
-          isForgotPassword: true,
-        });
-      } else {
-        navigation.navigate('OTPVerification', {
-          phoneNumber: emailOrPhone,
+          phoneNumber,
           isSignup: false,
           isForgotPassword: true,
         });
       }
     } catch (err: any) {
-      if (err.status === 404) {
-        setError('No account found with this email/phone number');
+      if (err instanceof ApiError) {
+        switch (err.status) {
+          case 404:
+            setError('No account found with this email/phone number');
+            break;
+          case 429:
+            setError('Too many requests. Please try again later');
+            break;
+          default:
+            setError(err.message || 'Failed to send code. Please try again.');
+        }
       } else {
-        setError(err.message || 'Failed to send code. Please try again.');
+        setError('Failed to send code. Please check your connection and try again.');
       }
     } finally {
       setLoading(false);
@@ -84,12 +90,8 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
     >
       <StatusBar barStyle="light-content" backgroundColor="#111827" />
 
-      {/* Loading Overlay */}
       {loading && (
-        <LoadingSpinner
-          overlay
-          message="Sending verification code..."
-        />
+        <LoadingSpinner overlay message="Sending verification code..." />
       )}
 
       <ScrollView
@@ -98,7 +100,6 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Back Button */}
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           className="w-10 h-10 rounded-full bg-surface items-center justify-center mt-16 mb-8"
@@ -107,7 +108,6 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
           <ArrowLeft size={20} color="white" />
         </TouchableOpacity>
 
-        {/* Header */}
         <View className="mb-12">
           <Text className="text-4xl font-bold text-white mb-3">
             Forgot Password?
@@ -117,9 +117,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
           </Text>
         </View>
 
-        {/* Form */}
         <View className="mb-8">
-          {/* Error Message */}
           {error && (
             <ErrorMessage
               message={error}
@@ -141,7 +139,6 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
             error=""
           />
 
-          {/* Continue Button */}
           <AuthButton
             title="Send Code"
             onPress={handleContinue}
@@ -150,7 +147,6 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
             className="mt-4"
           />
 
-          {/* Back to Login */}
           <TouchableOpacity
             onPress={() => navigation.navigate('Login')}
             className="items-center py-4 mt-6"
@@ -163,7 +159,6 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
           </TouchableOpacity>
         </View>
 
-        {/* Help Text */}
         <Text className="text-xs text-text-tertiary text-center leading-5 mt-auto mb-6">
           Need more help?{' '}
           <Text className="text-primary font-semibold">Contact Support</Text>

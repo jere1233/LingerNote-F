@@ -22,6 +22,7 @@ export type RootStackParamList = {
   };
   ResetPassword: {
     phoneNumber: string;
+    resetToken: string;
   };
   Main: undefined;
 };

@@ -1,3 +1,4 @@
+// src/screens/auth/OTPVerificationScreen.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -12,9 +13,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { ArrowLeft } from 'lucide-react-native';
+
 import AuthButton from '../../components/auth/AuthButton';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
+import AuthAPI from '../../services/api/auth.api';
+import { ApiError } from '../../services/api/api.client';
+import { useAuth } from '../../context/AuthContext';
 
 type OTPVerificationScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'OTPVerification'>;
@@ -26,6 +31,7 @@ export default function OTPVerificationScreen({
   route,
 }: OTPVerificationScreenProps) {
   const { phoneNumber, isSignup, isForgotPassword } = route.params;
+  const { setUser } = useAuth();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [timer, setTimer] = useState(60);
@@ -49,12 +55,10 @@ export default function OTPVerificationScreen({
     setOtp(newOtp);
     setError('');
 
-    // Auto focus next input
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
 
-    // Auto verify when all digits are entered
     if (newOtp.every((digit) => digit !== '') && index === 5) {
       handleVerify(newOtp.join(''));
     }
@@ -78,27 +82,51 @@ export default function OTPVerificationScreen({
     setError('');
 
     try {
-      // TODO: Replace with actual API call
-      // if (isForgotPassword) {
-      //   const response = await AuthAPI.verifyResetOTP({ emailOrPhone: phoneNumber, otp: code });
-      // } else {
-      //   const response = await AuthAPI.verifyOTP({ emailOrPhone: phoneNumber, otp: code, isSignup });
-      // }
+      if (isForgotPassword) {
+        // Verify reset OTP
+        const response = await AuthAPI.verifyResetOTP({
+          emailOrPhone: phoneNumber,
+          otp: code,
+        });
 
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Simulate verification
-      if (code === '123456') {
-        if (isForgotPassword) {
-          navigation.navigate('ResetPassword', { phoneNumber });
-        } else {
-          navigation.replace('Main');
+        if (response.success && response.data.resetToken) {
+          navigation.navigate('ResetPassword', {
+            phoneNumber,
+            resetToken: response.data.resetToken,
+          });
         }
       } else {
-        setError('Invalid code. Please check and try again.');
+        // Verify login/signup OTP
+        const response = await AuthAPI.verifyOTP({
+          emailOrPhone: phoneNumber,
+          otp: code,
+          isSignup,
+        });
+
+        if (response.success && response.data.user && response.data.tokens) {
+          // Use enhanced setUser which handles token and user storage
+          await setUser(response.data.user);
+          navigation.replace('Main');
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'Verification failed. Please try again.');
+      if (err instanceof ApiError) {
+        switch (err.status) {
+          case 400:
+            setError('Invalid OTP code. Please check and try again.');
+            break;
+          case 410:
+            setError('OTP code has expired. Please request a new one.');
+            break;
+          default:
+            setError(err.message || 'Verification failed. Please try again.');
+        }
+      } else {
+        setError('Verification failed. Please check your connection and try again.');
+      }
+      // Clear OTP fields on error
+      setOtp(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
     } finally {
       setLoading(false);
     }
@@ -109,16 +137,17 @@ export default function OTPVerificationScreen({
     setError('');
 
     try {
-      // TODO: Replace with actual API call
-      // await AuthAPI.resendOTP({ emailOrPhone: phoneNumber });
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
+      await AuthAPI.resendOTP({ emailOrPhone: phoneNumber });
+      
       setTimer(60);
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } catch (err: any) {
-      setError(err.message || 'Failed to resend code. Please try again.');
+      if (err instanceof ApiError) {
+        setError(err.message || 'Failed to resend code. Please try again.');
+      } else {
+        setError('Failed to resend code. Please check your connection.');
+      }
     } finally {
       setResending(false);
     }
@@ -146,16 +175,11 @@ export default function OTPVerificationScreen({
     >
       <StatusBar barStyle="light-content" backgroundColor="#111827" />
 
-      {/* Loading Overlay */}
       {loading && (
-        <LoadingSpinner
-          overlay
-          message="Verifying code..."
-        />
+        <LoadingSpinner overlay message="Verifying code..." />
       )}
 
       <View className="flex-1 px-6">
-        {/* Back Button */}
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           className="w-10 h-10 rounded-full bg-surface items-center justify-center mt-16 mb-8"
@@ -164,7 +188,6 @@ export default function OTPVerificationScreen({
           <ArrowLeft size={20} color="white" />
         </TouchableOpacity>
 
-        {/* Header */}
         <View className="mb-12">
           <Text className="text-4xl font-bold text-white mb-3">
             {headerText.title}
@@ -175,7 +198,6 @@ export default function OTPVerificationScreen({
           </Text>
         </View>
 
-        {/* Error Message */}
         {error && (
           <ErrorMessage
             message={error}
@@ -186,7 +208,6 @@ export default function OTPVerificationScreen({
           />
         )}
 
-        {/* OTP Input */}
         <View className="mb-6">
           <View className="flex-row justify-between mb-2">
             {otp.map((digit, index) => (
@@ -212,7 +233,6 @@ export default function OTPVerificationScreen({
           </View>
         </View>
 
-        {/* Resend Code */}
         <View className="items-center mb-8">
           {timer > 0 ? (
             <Text className="text-text-secondary text-sm">
@@ -228,7 +248,6 @@ export default function OTPVerificationScreen({
           )}
         </View>
 
-        {/* Verify Button */}
         <AuthButton
           title={isForgotPassword ? 'Verify Code' : 'Verify & Continue'}
           onPress={() => handleVerify()}
@@ -236,7 +255,6 @@ export default function OTPVerificationScreen({
           disabled={loading || otp.join('').length !== 6}
         />
 
-        {/* Help Text */}
         <Text className="text-xs text-text-tertiary text-center mt-6 leading-5">
           Didn't receive the code?{' '}
           <Text className="text-primary font-semibold">Check your SMS</Text>

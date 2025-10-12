@@ -18,12 +18,15 @@ import SocialButton from '../../components/auth/SocialButton';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { validateEmailOrPhone } from '../../utils/validators';
+import { useAuth } from '../../context/AuthContext';
+import { ApiError } from '../../services/api/api.client';
 
 type LoginScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
 };
 
 export default function LoginScreen({ navigation }: LoginScreenProps) {
+  const { login } = useAuth();
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{
@@ -50,7 +53,6 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   };
 
   const handleLogin = async () => {
-    // Clear previous errors
     setGeneralError('');
     const newErrors: typeof errors = {};
 
@@ -71,38 +73,49 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     setLoading(true);
 
     try {
-      // TODO: Replace with actual API call
-      // const response = await AuthAPI.login({ emailOrPhone, password });
+      const response = await login(emailOrPhone, password);
       
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate API response
-      const simulatedResponse = {
-        success: true,
-        requiresOTP: emailOrPhoneValidation.type === 'phone',
-      };
-
-      if (simulatedResponse.requiresOTP) {
+      if (response.data.requiresOTP) {
+        // Navigate to OTP verification
+        const phoneNumber = emailOrPhoneValidation.type === 'phone' 
+          ? `+254${emailOrPhone}`
+          : emailOrPhone;
+        
         navigation.navigate('OTPVerification', {
-          phoneNumber: '+254' + emailOrPhone,
+          phoneNumber,
           isSignup: false,
         });
       } else {
+        // Login successful, navigate to main app
         navigation.replace('Main');
       }
     } catch (error: any) {
-      // Handle different error scenarios
-      setGeneralError(
-        error.message || 'Login failed. Please check your credentials and try again.'
-      );
+      if (error instanceof ApiError) {
+        switch (error.status) {
+          case 401:
+            setGeneralError('Invalid email/phone or password');
+            break;
+          case 404:
+            setGeneralError('No account found with these credentials');
+            break;
+          case 403:
+            setGeneralError('Account is suspended. Please contact support');
+            break;
+          default:
+            setGeneralError(error.message || 'Login failed. Please try again.');
+        }
+      } else {
+        setGeneralError('Login failed. Please check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = () => {
-    // TODO: Implement Google Sign-In
-    console.log('Google login');
+  const handleGoogleLogin = async () => {
+    // TODO: Implement Google Sign-In with proper OAuth flow
+    console.log('Google login - To be implemented');
+    setGeneralError('Google login coming soon!');
   };
 
   return (
@@ -112,7 +125,6 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     >
       <StatusBar barStyle="light-content" backgroundColor="#111827" />
       
-      {/* Loading Overlay */}
       {loading && (
         <LoadingSpinner
           overlay
@@ -126,7 +138,6 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View className="mb-12">
           <Text className="text-4xl font-bold text-white mb-3">
             Welcome Back
@@ -136,9 +147,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           </Text>
         </View>
 
-        {/* Form */}
         <View className="mb-8">
-          {/* General Error Message */}
           {generalError && (
             <ErrorMessage
               message={generalError}
@@ -170,7 +179,6 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             error={errors.password}
           />
 
-          {/* Forgot Password */}
           <TouchableOpacity 
             onPress={() => navigation.navigate('ForgotPassword')}
             className="self-end -mt-2 mb-4"
@@ -180,7 +188,6 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             </Text>
           </TouchableOpacity>
 
-          {/* Login Button */}
           <AuthButton
             title="Sign In"
             onPress={handleLogin}
@@ -189,7 +196,6 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             className="mb-4"
           />
 
-          {/* Divider */}
           <View className="flex-row items-center my-5">
             <View className="flex-1 h-[1px] bg-[#374151]" />
             <Text className="mx-4 text-sm text-text-tertiary font-semibold">
@@ -198,10 +204,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             <View className="flex-1 h-[1px] bg-[#374151]" />
           </View>
 
-          {/* Google Login */}
           <SocialButton onPress={handleGoogleLogin} loading={false} />
 
-          {/* Sign Up Link */}
           <TouchableOpacity
             onPress={() => navigation.navigate('Signup')}
             className="items-center py-4 mt-4"
@@ -214,7 +218,6 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           </TouchableOpacity>
         </View>
 
-        {/* Terms */}
         <Text className="text-xs text-text-tertiary text-center leading-5 mt-auto mb-6">
           By continuing, you agree to our{' '}
           <Text className="text-primary font-semibold">Terms of Service</Text> and{' '}

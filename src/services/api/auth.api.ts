@@ -98,6 +98,21 @@ export interface ResendOTPResponse {
   message: string;
 }
 
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+export interface RefreshTokenResponse {
+  success: boolean;
+  message: string;
+  data: {
+    tokens: {
+      accessToken: string;
+      refreshToken: string;
+    };
+  };
+}
+
 export interface User {
   id: string;
   fullName: string;
@@ -106,6 +121,7 @@ export interface User {
   avatar?: string;
   createdAt: string;
   isVerified: boolean;
+  status: string;
 }
 
 // Auth API Service
@@ -121,8 +137,8 @@ export class AuthAPI {
         false // Don't include auth token for login
       );
 
-      // Store tokens if login successful
-      if (response.success && response.data.tokens) {
+      // Store tokens if login successful and OTP not required
+      if (response.success && response.data.tokens && !response.data.requiresOTP) {
         await TokenManager.setAccessToken(response.data.tokens.accessToken);
         await TokenManager.setRefreshToken(response.data.tokens.refreshToken);
       }
@@ -265,6 +281,28 @@ export class AuthAPI {
         throw error;
       }
       throw new ApiError(500, 'Failed to reset password. Please try again.');
+    }
+  }
+
+  /**
+   * Refresh access token using refresh token
+   */
+  static async refreshToken(
+    data: RefreshTokenRequest
+  ): Promise<RefreshTokenResponse> {
+    try {
+      const response = await apiClient.post<RefreshTokenResponse>(
+        API_ENDPOINTS.AUTH.REFRESH_TOKEN,
+        data,
+        false
+      );
+
+      return response;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, 'Failed to refresh token. Please try again.');
     }
   }
 
