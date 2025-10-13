@@ -11,40 +11,30 @@ import {
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { User, Mail, Lock } from 'lucide-react-native';
+import { Mail, Lock } from 'lucide-react-native';
 
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
 import SocialButton from '../../components/auth/SocialButton';
 import ErrorMessage from '../../components/common/ErrorMessage';
-import { validators, validateEmailOrPhone } from '../../utils/validators';
+import { validateEmailOrPhone } from '../../utils/validators';
 import { useAuth } from '../../context/AuthContext';
 import { ApiError } from '../../services/api/api.client';
 
-type SignupScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Signup'>;
+type LoginScreenProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
 };
 
-export default function SignupScreen({ navigation }: SignupScreenProps) {
-  const { signup } = useAuth();
-  const [fullName, setFullName] = useState('');
+export default function LoginScreen({ navigation }: LoginScreenProps) {
+  const { login } = useAuth();
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{
-    fullName?: string;
     emailOrPhone?: string;
     password?: string;
   }>({});
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState('');
-
-  const handleFullNameChange = (text: string) => {
-    setFullName(text);
-    if (errors.fullName) {
-      setErrors({ ...errors, fullName: undefined });
-    }
-    if (generalError) setGeneralError('');
-  };
 
   const handleEmailOrPhoneChange = (text: string) => {
     setEmailOrPhone(text);
@@ -62,23 +52,17 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
     if (generalError) setGeneralError('');
   };
 
-  const handleSignup = async () => {
+  const handleLogin = async () => {
     setGeneralError('');
     const newErrors: typeof errors = {};
-
-    const nameValidation = validators.fullName(fullName);
-    if (!nameValidation.valid) {
-      newErrors.fullName = nameValidation.message;
-    }
 
     const emailOrPhoneValidation = validateEmailOrPhone(emailOrPhone);
     if (!emailOrPhoneValidation.valid) {
       newErrors.emailOrPhone = emailOrPhoneValidation.message || 'Invalid input';
     }
 
-    const passwordValidation = validators.password(password);
-    if (!passwordValidation.valid) {
-      newErrors.password = passwordValidation.message;
+    if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -89,43 +73,49 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
     setLoading(true);
 
     try {
-      const response = await signup(fullName, emailOrPhone, password);
-
+      const response = await login(emailOrPhone, password);
+      
       if (response.data.requiresOTP) {
-        const phoneNumber = emailOrPhoneValidation.type === 'phone'
+        // Navigate to OTP verification
+        const phoneNumber = emailOrPhoneValidation.type === 'phone' 
           ? `+254${emailOrPhone}`
           : emailOrPhone;
-
+        
         navigation.navigate('OTPVerification', {
           phoneNumber,
-          isSignup: true,
+          isSignup: false,
         });
       } else {
+        // Login successful, navigate to main app
         navigation.replace('Main');
       }
     } catch (error: any) {
       if (error instanceof ApiError) {
         switch (error.status) {
-          case 409:
-            setGeneralError('An account with this email/phone already exists');
+          case 401:
+            setGeneralError('Invalid email/phone or password');
             break;
-          case 400:
-            setGeneralError(error.message || 'Invalid signup data. Please check your information');
+          case 404:
+            setGeneralError('No account found with these credentials');
+            break;
+          case 403:
+            setGeneralError('Account is suspended. Please contact support');
             break;
           default:
-            setGeneralError(error.message || 'Signup failed. Please try again.');
+            setGeneralError(error.message || 'Login failed. Please try again.');
         }
       } else {
-        setGeneralError('Signup failed. Please check your connection and try again.');
+        setGeneralError('Login failed. Please check your connection and try again.');
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSignup = async () => {
-    console.log('Google signup - To be implemented');
-    setGeneralError('Google signup coming soon!');
+  const handleGoogleLogin = async () => {
+    // TODO: Implement Google Sign-In with proper OAuth flow
+    console.log('Google login - To be implemented');
+    setGeneralError('Google login coming soon!');
   };
 
   return (
@@ -143,10 +133,10 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
       >
         <View className="mb-12">
           <Text className="text-4xl font-bold text-white mb-3">
-            Create Account
+            Welcome Back
           </Text>
           <Text className="text-base text-text-secondary">
-            Join LingerNote today
+            Sign in to continue to LingerNote
           </Text>
         </View>
 
@@ -162,19 +152,11 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
           )}
 
           <AuthInput
-            label="Full Name"
-            icon={User}
-            value={fullName}
-            onChangeText={handleFullNameChange}
-            autoCapitalize="words"
-            error={errors.fullName}
-          />
-
-          <AuthInput
             label="Email or Phone Number"
             icon={Mail}
             value={emailOrPhone}
             onChangeText={handleEmailOrPhoneChange}
+            placeholder="email@example.com or 712345678"
             keyboardType="email-address"
             autoCapitalize="none"
             error={errors.emailOrPhone}
@@ -185,13 +167,23 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
             icon={Lock}
             value={password}
             onChangeText={handlePasswordChange}
+            placeholder="Enter your password"
             isPassword
             error={errors.password}
           />
 
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('ForgotPassword')}
+            className="self-end -mt-2 mb-4"
+          >
+            <Text className="text-sm text-[#a855f7] font-semibold">
+              Forgot Password?
+            </Text>
+          </TouchableOpacity>
+
           <AuthButton
-            title="Create Account"
-            onPress={handleSignup}
+            title="Sign In"
+            onPress={handleLogin}
             loading={loading}
             disabled={loading}
             className="mb-4"
@@ -206,16 +198,16 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
             <View className="flex-1 h-[1px] bg-[#374151]" />
           </View>
 
-          <SocialButton onPress={handleGoogleSignup} loading={false} />
+          <SocialButton onPress={handleGoogleLogin} loading={false} />
 
           <TouchableOpacity
-            onPress={() => navigation.navigate('Login')}
+            onPress={() => navigation.navigate('Signup')}
             className="items-center py-4 mt-4"
             disabled={loading}
           >
             <Text className="text-sm text-text-secondary">
-              Already have an account?{' '}
-              <Text className="text-primary font-semibold">Sign In</Text>
+              Don't have an account?{' '}
+              <Text className="text-primary font-semibold">Sign Up</Text>
             </Text>
           </TouchableOpacity>
         </View>
