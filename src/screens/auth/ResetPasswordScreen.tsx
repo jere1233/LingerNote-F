@@ -16,7 +16,6 @@ import { Lock, ArrowLeft } from 'lucide-react-native';
 
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { validators } from '../../utils/validators';
 import AuthAPI from '../../services/api/auth.api';
@@ -128,9 +127,6 @@ export default function ResetPasswordScreen({
     >
       <StatusBar barStyle="light-content" backgroundColor="#111827" />
 
-      {loading && (
-        <LoadingSpinner overlay message="Resetting password..." />
-      )}
 
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}

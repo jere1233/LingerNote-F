@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
 
 interface AuthButtonProps {
   title: string;
@@ -8,6 +8,7 @@ interface AuthButtonProps {
   loading?: boolean;
   disabled?: boolean;
   className?: string;
+  LoadingComponent?: React.ReactNode;
 }
 
 export default function AuthButton({
@@ -17,6 +18,7 @@ export default function AuthButton({
   loading = false,
   disabled = false,
   className = '',
+  LoadingComponent,
 }: AuthButtonProps) {
   const getButtonClasses = () => {
     const baseClasses = 'py-4 rounded-xl items-center justify-center min-h-[52px]';
@@ -47,6 +49,13 @@ export default function AuthButton({
     return 'text-white text-base font-bold';
   };
 
+  const getLoadingColor = () => {
+    if (variant === 'outline') {
+      return '#a855f7';
+    }
+    return '#ffffff';
+  };
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -55,15 +64,14 @@ export default function AuthButton({
       disabled={disabled || loading}
     >
       {loading ? (
-        <ActivityIndicator color="#ffffff" />
+        <View className="flex-row items-center justify-center">
+          {LoadingComponent || (
+            <ActivityIndicator color={getLoadingColor()} />
+          )}
+        </View>
       ) : (
         <Text className={getTextClasses()}>{title}</Text>
       )}
     </TouchableOpacity>
   );
 }
-
-
-
-
-

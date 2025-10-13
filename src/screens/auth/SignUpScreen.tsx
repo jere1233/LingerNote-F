@@ -7,6 +7,7 @@ import {
   ScrollView,
   StatusBar,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
@@ -15,7 +16,6 @@ import { User, Mail, Lock } from 'lucide-react-native';
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
 import SocialButton from '../../components/auth/SocialButton';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { validators, validateEmailOrPhone } from '../../utils/validators';
 import { useAuth } from '../../context/AuthContext';
@@ -30,12 +30,10 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
   const [fullName, setFullName] = useState('');
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState<{
     fullName?: string;
     emailOrPhone?: string;
     password?: string;
-    confirmPassword?: string;
   }>({});
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState('');
@@ -64,14 +62,6 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
     if (generalError) setGeneralError('');
   };
 
-  const handleConfirmPasswordChange = (text: string) => {
-    setConfirmPassword(text);
-    if (errors.confirmPassword) {
-      setErrors({ ...errors, confirmPassword: undefined });
-    }
-    if (generalError) setGeneralError('');
-  };
-
   const handleSignup = async () => {
     setGeneralError('');
     const newErrors: typeof errors = {};
@@ -91,10 +81,6 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
       newErrors.password = passwordValidation.message;
     }
 
-    if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -106,7 +92,6 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
       const response = await signup(fullName, emailOrPhone, password);
 
       if (response.data.requiresOTP) {
-        // Navigate to OTP verification
         const phoneNumber = emailOrPhoneValidation.type === 'phone'
           ? `+254${emailOrPhone}`
           : emailOrPhone;
@@ -116,7 +101,6 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
           isSignup: true,
         });
       } else {
-        // Signup successful, navigate to main app
         navigation.replace('Main');
       }
     } catch (error: any) {
@@ -140,7 +124,6 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
   };
 
   const handleGoogleSignup = async () => {
-    // TODO: Implement Google Sign-In
     console.log('Google signup - To be implemented');
     setGeneralError('Google signup coming soon!');
   };
@@ -151,10 +134,6 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
       className="flex-1 bg-background"
     >
       <StatusBar barStyle="light-content" backgroundColor="#111827" />
-
-      {loading && (
-        <LoadingSpinner overlay message="Creating your account..." />
-      )}
 
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
@@ -167,7 +146,7 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
             Create Account
           </Text>
           <Text className="text-base text-text-secondary">
-            Sign up to get started with LingerNote
+            Join LingerNote today
           </Text>
         </View>
 
@@ -187,7 +166,6 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
             icon={User}
             value={fullName}
             onChangeText={handleFullNameChange}
-            placeholder="John Doe"
             autoCapitalize="words"
             error={errors.fullName}
           />
@@ -197,7 +175,6 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
             icon={Mail}
             value={emailOrPhone}
             onChangeText={handleEmailOrPhoneChange}
-            placeholder="email@example.com or 712345678"
             keyboardType="email-address"
             autoCapitalize="none"
             error={errors.emailOrPhone}
@@ -208,27 +185,17 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
             icon={Lock}
             value={password}
             onChangeText={handlePasswordChange}
-            placeholder="Create a password"
             isPassword
             error={errors.password}
           />
 
-          <AuthInput
-            label="Confirm Password"
-            icon={Lock}
-            value={confirmPassword}
-            onChangeText={handleConfirmPasswordChange}
-            placeholder="Re-enter your password"
-            isPassword
-            error={errors.confirmPassword}
-          />
-
           <AuthButton
-            title="Sign Up"
+            title="Create Account"
             onPress={handleSignup}
             loading={loading}
             disabled={loading}
             className="mb-4"
+            LoadingComponent={<ActivityIndicator size="small" color="#ffffff" />}
           />
 
           <View className="flex-row items-center my-5">

@@ -32,9 +32,12 @@ export default function SocialButton({ onPress, loading = false }: SocialButtonP
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="py-3.5 rounded-xl items-center justify-center min-h-[52px] border border-gray-700"
-      style={{ backgroundColor: '#1F1F1F' }}
-      activeOpacity={0.8}
+      className="py-3.5 px-4 items-center justify-center min-h-[52px] border border-[#374151]"
+      style={{
+        backgroundColor: '#1F2937',
+        borderRadius: 26,
+      }}
+      activeOpacity={0.7}
       disabled={loading}
     >
       {loading ? (
@@ -42,7 +45,7 @@ export default function SocialButton({ onPress, loading = false }: SocialButtonP
       ) : (
         <View className="flex-row items-center">
           <GoogleIcon />
-          <Text className="text-white text-base font-medium ml-3">
+          <Text className="text-white text-base font-semibold ml-3">
             Continue with Google
           </Text>
         </View>

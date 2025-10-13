@@ -15,7 +15,6 @@ import { RootStackParamList } from '../../navigation/RootNavigator';
 import { ArrowLeft } from 'lucide-react-native';
 
 import AuthButton from '../../components/auth/AuthButton';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import AuthAPI from '../../services/api/auth.api';
 import { ApiError } from '../../services/api/api.client';
@@ -175,10 +174,7 @@ export default function OTPVerificationScreen({
     >
       <StatusBar barStyle="light-content" backgroundColor="#111827" />
 
-      {loading && (
-        <LoadingSpinner overlay message="Verifying code..." />
-      )}
-
+      
       <View className="flex-1 px-6">
         <TouchableOpacity
           onPress={() => navigation.goBack()}

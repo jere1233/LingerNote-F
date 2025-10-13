@@ -7,34 +7,44 @@ import {
   ScrollView,
   StatusBar,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { Mail, Lock } from 'lucide-react-native';
+import { User, Mail, Lock } from 'lucide-react-native';
 
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
 import SocialButton from '../../components/auth/SocialButton';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
-import { validateEmailOrPhone } from '../../utils/validators';
+import { validators, validateEmailOrPhone } from '../../utils/validators';
 import { useAuth } from '../../context/AuthContext';
 import { ApiError } from '../../services/api/api.client';
 
-type LoginScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
+type SignupScreenProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Signup'>;
 };
 
-export default function LoginScreen({ navigation }: LoginScreenProps) {
-  const { login } = useAuth();
+export default function SignupScreen({ navigation }: SignupScreenProps) {
+  const { signup } = useAuth();
+  const [fullName, setFullName] = useState('');
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{
+    fullName?: string;
     emailOrPhone?: string;
     password?: string;
   }>({});
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState('');
+
+  const handleFullNameChange = (text: string) => {
+    setFullName(text);
+    if (errors.fullName) {
+      setErrors({ ...errors, fullName: undefined });
+    }
+    if (generalError) setGeneralError('');
+  };
 
   const handleEmailOrPhoneChange = (text: string) => {
     setEmailOrPhone(text);
@@ -52,17 +62,23 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     if (generalError) setGeneralError('');
   };
 
-  const handleLogin = async () => {
+  const handleSignup = async () => {
     setGeneralError('');
     const newErrors: typeof errors = {};
+
+    const nameValidation = validators.fullName(fullName);
+    if (!nameValidation.valid) {
+      newErrors.fullName = nameValidation.message;
+    }
 
     const emailOrPhoneValidation = validateEmailOrPhone(emailOrPhone);
     if (!emailOrPhoneValidation.valid) {
       newErrors.emailOrPhone = emailOrPhoneValidation.message || 'Invalid input';
     }
 
-    if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    const passwordValidation = validators.password(password);
+    if (!passwordValidation.valid) {
+      newErrors.password = passwordValidation.message;
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -73,49 +89,43 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     setLoading(true);
 
     try {
-      const response = await login(emailOrPhone, password);
-      
+      const response = await signup(fullName, emailOrPhone, password);
+
       if (response.data.requiresOTP) {
-        // Navigate to OTP verification
-        const phoneNumber = emailOrPhoneValidation.type === 'phone' 
+        const phoneNumber = emailOrPhoneValidation.type === 'phone'
           ? `+254${emailOrPhone}`
           : emailOrPhone;
-        
+
         navigation.navigate('OTPVerification', {
           phoneNumber,
-          isSignup: false,
+          isSignup: true,
         });
       } else {
-        // Login successful, navigate to main app
         navigation.replace('Main');
       }
     } catch (error: any) {
       if (error instanceof ApiError) {
         switch (error.status) {
-          case 401:
-            setGeneralError('Invalid email/phone or password');
+          case 409:
+            setGeneralError('An account with this email/phone already exists');
             break;
-          case 404:
-            setGeneralError('No account found with these credentials');
-            break;
-          case 403:
-            setGeneralError('Account is suspended. Please contact support');
+          case 400:
+            setGeneralError(error.message || 'Invalid signup data. Please check your information');
             break;
           default:
-            setGeneralError(error.message || 'Login failed. Please try again.');
+            setGeneralError(error.message || 'Signup failed. Please try again.');
         }
       } else {
-        setGeneralError('Login failed. Please check your connection and try again.');
+        setGeneralError('Signup failed. Please check your connection and try again.');
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
-    // TODO: Implement Google Sign-In with proper OAuth flow
-    console.log('Google login - To be implemented');
-    setGeneralError('Google login coming soon!');
+  const handleGoogleSignup = async () => {
+    console.log('Google signup - To be implemented');
+    setGeneralError('Google signup coming soon!');
   };
 
   return (
@@ -124,13 +134,6 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       className="flex-1 bg-background"
     >
       <StatusBar barStyle="light-content" backgroundColor="#111827" />
-      
-      {loading && (
-        <LoadingSpinner
-          overlay
-          message="Signing you in..."
-        />
-      )}
 
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
@@ -140,10 +143,10 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       >
         <View className="mb-12">
           <Text className="text-4xl font-bold text-white mb-3">
-            Welcome Back
+            Create Account
           </Text>
           <Text className="text-base text-text-secondary">
-            Sign in to continue to LingerNote
+            Join LingerNote today
           </Text>
         </View>
 
@@ -159,11 +162,19 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           )}
 
           <AuthInput
+            label="Full Name"
+            icon={User}
+            value={fullName}
+            onChangeText={handleFullNameChange}
+            autoCapitalize="words"
+            error={errors.fullName}
+          />
+
+          <AuthInput
             label="Email or Phone Number"
             icon={Mail}
             value={emailOrPhone}
             onChangeText={handleEmailOrPhoneChange}
-            placeholder="email@example.com or 712345678"
             keyboardType="email-address"
             autoCapitalize="none"
             error={errors.emailOrPhone}
@@ -174,26 +185,17 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             icon={Lock}
             value={password}
             onChangeText={handlePasswordChange}
-            placeholder="Enter your password"
             isPassword
             error={errors.password}
           />
 
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('ForgotPassword')}
-            className="self-end -mt-2 mb-4"
-          >
-            <Text className="text-sm text-[#a855f7] font-semibold">
-              Forgot Password?
-            </Text>
-          </TouchableOpacity>
-
           <AuthButton
-            title="Sign In"
-            onPress={handleLogin}
+            title="Create Account"
+            onPress={handleSignup}
             loading={loading}
             disabled={loading}
             className="mb-4"
+            LoadingComponent={<ActivityIndicator size="small" color="#ffffff" />}
           />
 
           <View className="flex-row items-center my-5">
@@ -204,16 +206,16 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             <View className="flex-1 h-[1px] bg-[#374151]" />
           </View>
 
-          <SocialButton onPress={handleGoogleLogin} loading={false} />
+          <SocialButton onPress={handleGoogleSignup} loading={false} />
 
           <TouchableOpacity
-            onPress={() => navigation.navigate('Signup')}
+            onPress={() => navigation.navigate('Login')}
             className="items-center py-4 mt-4"
             disabled={loading}
           >
             <Text className="text-sm text-text-secondary">
-              Don't have an account?{' '}
-              <Text className="text-primary font-semibold">Sign Up</Text>
+              Already have an account?{' '}
+              <Text className="text-primary font-semibold">Sign In</Text>
             </Text>
           </TouchableOpacity>
         </View>
