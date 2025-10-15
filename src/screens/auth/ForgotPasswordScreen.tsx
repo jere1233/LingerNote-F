@@ -109,7 +109,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
             Forgot Password?
           </Text>
           <Text className="text-base text-text-secondary leading-6">
-            Don't worry! Enter your email or phone number and we'll send you a code to reset your password.
+            Enter your email or phone number and we'll send you a code to reset your password.
           </Text>
         </View>
 
