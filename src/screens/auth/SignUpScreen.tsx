@@ -146,7 +146,7 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
             Create Account
           </Text>
           <Text className="text-base text-text-secondary">
-            Join LingerNote today
+            Join Vyn today
           </Text>
         </View>
 

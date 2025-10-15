@@ -15,26 +15,26 @@ export class ApiError extends Error {
 
 export const TokenManager = {
   async getAccessToken(): Promise<string | null> {
-    return await AsyncStorage.getItem('@lingernote_access_token');
+    return await AsyncStorage.getItem('@Vyn_access_token');
   },
 
   async setAccessToken(token: string): Promise<void> {
-    await AsyncStorage.setItem('@lingernote_access_token', token);
+    await AsyncStorage.setItem('@Vyn_access_token', token);
   },
 
   async getRefreshToken(): Promise<string | null> {
-    return await AsyncStorage.getItem('@lingernote_refresh_token');
+    return await AsyncStorage.getItem('@Vyn_refresh_token');
   },
 
   async setRefreshToken(token: string): Promise<void> {
-    await AsyncStorage.setItem('@lingernote_refresh_token', token);
+    await AsyncStorage.setItem('@Vyn_refresh_token', token);
   },
 
   async clearTokens(): Promise<void> {
     await AsyncStorage.multiRemove([
-      '@lingernote_access_token',
-      '@lingernote_refresh_token',
-      '@lingernote_token_expiry',
+      '@Vyn_access_token',
+      '@Vyn_refresh_token',
+      '@Vyn_token_expiry',
     ]);
   },
 

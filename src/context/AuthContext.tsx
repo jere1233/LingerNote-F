@@ -30,11 +30,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Storage keys
 const STORAGE_KEYS = {
-  USER: '@lingernote_user',
-  ACCESS_TOKEN: '@lingernote_access_token',
-  REFRESH_TOKEN: '@lingernote_refresh_token',
-  TOKEN_EXPIRY: '@lingernote_token_expiry',
-  LAST_ACTIVITY: '@lingernote_last_activity',
+  USER: '@vyn_user',
+  ACCESS_TOKEN: '@vyn_access_token',
+  REFRESH_TOKEN: '@vyn_refresh_token',
+  TOKEN_EXPIRY: '@vyn_token_expiry',
+  LAST_ACTIVITY: '@vyn_last_activity',
 } as const;
 
 // Token refresh configuration

@@ -69,7 +69,7 @@ export default function SplashScreen({ navigation }: SplashScreenProps) {
 
           {/* App Name */}
           <Text className="text-5xl font-bold text-white tracking-tight">
-            LingerNote
+            Vyn
           </Text>
 
           {/* Tagline */}

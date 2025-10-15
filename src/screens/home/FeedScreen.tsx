@@ -44,7 +44,7 @@ export default function FeedScreen() {
       <View className="bg-gray-900 border-b border-gray-800 px-6 py-4">
         <View className="flex-row items-center justify-between">
           <Text className="text-2xl font-bold text-transparent bg-gradient-to-r from-purple-400 to-pink-500">
-            LingerNote
+            Vyn
           </Text>
           <Text className="text-2xl">🔔</Text>
         </View>

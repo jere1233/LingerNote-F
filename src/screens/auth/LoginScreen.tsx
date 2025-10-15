@@ -136,7 +136,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             Welcome Back
           </Text>
           <Text className="text-base text-text-secondary">
-            Sign in to continue to LingerNote
+            Sign in to continue to Vyn
           </Text>
         </View>
 

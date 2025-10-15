@@ -24,7 +24,7 @@ const getApiUrl = () => {
     });
   }
 
-  return 'https://api.lingernote.com/api';
+  return 'https://api.vyn.com/api';
 };
 
 export const API_CONFIG = {
