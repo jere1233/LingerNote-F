@@ -105,7 +105,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
         </TouchableOpacity>
 
         <View className="mb-12">
-          <Text className="text-4xl font-bold text-white mb-3">
+          <Text className="text-3xl font-bold text-white mb-3">
             Forgot Password?
           </Text>
           <Text className="text-base text-text-secondary leading-6">
@@ -129,7 +129,6 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
             icon={Mail}
             value={emailOrPhone}
             onChangeText={handleEmailOrPhoneChange}
-            placeholder="email@example.com or 712345678"
             keyboardType="email-address"
             autoCapitalize="none"
             error=""

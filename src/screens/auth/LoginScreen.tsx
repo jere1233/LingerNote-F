@@ -156,7 +156,6 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             icon={Mail}
             value={emailOrPhone}
             onChangeText={handleEmailOrPhoneChange}
-            placeholder="email@example.com or 712345678"
             keyboardType="email-address"
             autoCapitalize="none"
             error={errors.emailOrPhone}
