@@ -2,36 +2,36 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-const ENV = Constants.expoConfig?.extra?.env || 'development';
-
-// Get API URL from environment variables
+// Get API URL from environment variables with proper fallback
 const getApiUrl = () => {
-  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  // Try to get from expo extra config first
+  const extraApiUrl = Constants.expoConfig?.extra?.apiUrl;
   
-  if (envUrl) {
-    return envUrl;
+  if (extraApiUrl) {
+    console.log('✅ Using API URL from expo config:', extraApiUrl);
+    return extraApiUrl;
   }
 
-  // Fallback based on __DEV__
+  // Fallback to hardcoded values based on environment
   if (__DEV__) {
-    // For Android emulator, use 10.0.2.2
-    // For iOS simulator, use localhost
-    // For physical device, use your computer's IP
-    return Platform.select({
-      android: 'http://10.0.2.2:3000/api',
-      ios: 'http://localhost:3000/api',
-      default: 'http://localhost:3000/api',
+    const fallbackUrl = Platform.select({
+      android: 'http://192.168.1.104:3000',
+      ios: 'http://192.168.1.104:3000',
+      default: 'http://192.168.1.104:3000',
     });
+    console.log('⚠️ Using fallback API URL:', fallbackUrl);
+    return fallbackUrl;
   }
 
-  return 'https://api.vyn.com/api';
+  console.log('🌐 Using production API URL');
+  return 'https://api.vyn.com';
 };
 
 export const API_CONFIG = {
   BASE_URL: getApiUrl(),
-  TIMEOUT: 30000, // 30 seconds
+  TIMEOUT: 120000, // 2 minutes
   RETRY_ATTEMPTS: 3,
-  RETRY_DELAY: 1000, // 1 second
+  RETRY_DELAY: 1000,
   
   HEADERS: {
     'Content-Type': 'application/json',
@@ -41,28 +41,33 @@ export const API_CONFIG = {
   },
 };
 
+// Log config on load
+console.log('🔧 API Config loaded:', {
+  BASE_URL: API_CONFIG.BASE_URL,
+  PLATFORM: Platform.OS,
+  TIMEOUT: API_CONFIG.TIMEOUT,
+});
+
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: '/auth/login',
-    SIGNUP: '/auth/signup',
-    LOGOUT: '/auth/logout',
-    REFRESH_TOKEN: '/auth/refresh-token',
-    VERIFY_OTP: '/auth/verify-otp',
-    RESEND_OTP: '/auth/resend-otp',
-    FORGOT_PASSWORD: '/auth/forgot-password',
-    VERIFY_RESET_OTP: '/auth/verify-reset-otp',
-    RESET_PASSWORD: '/auth/reset-password',
-    GOOGLE_AUTH: '/auth/google',
+    LOGIN: '/api/auth/login',
+    SIGNUP: '/api/auth/signup',
+    LOGOUT: '/api/auth/logout',
+    REFRESH_TOKEN: '/api/auth/refresh-token',
+    VERIFY_OTP: '/api/auth/verify-otp',
+    RESEND_OTP: '/api/auth/resend-verification',
+    FORGOT_PASSWORD: '/api/auth/forgot-password',
+    VERIFY_RESET_OTP: '/api/auth/verify-reset-otp',
+    RESET_PASSWORD: '/api/auth/reset-password',
+    GOOGLE_AUTH: '/api/auth/google',
   },
   
   USER: {
-    PROFILE: '/user/profile',
-    UPDATE_PROFILE: '/user/profile/update',
-    CHANGE_PASSWORD: '/user/change-password',
-    DELETE_ACCOUNT: '/user/delete-account',
+    PROFILE: '/api/user/profile',
+    UPDATE_PROFILE: '/api/user/profile/update',
+    CHANGE_PASSWORD: '/api/user/change-password',
+    DELETE_ACCOUNT: '/api/user/delete-account',
   },
-
-  // Add more as needed
 };
 
 export const ERROR_MESSAGES = {
@@ -78,7 +83,6 @@ export const ERROR_MESSAGES = {
   RATE_LIMIT: 'Too many requests. Please wait a moment.',
 };
 
-// HTTP Status Code Helpers
 export const HTTP_STATUS = {
   OK: 200,
   CREATED: 201,
