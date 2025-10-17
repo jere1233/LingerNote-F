@@ -3,17 +3,22 @@ import React, { useEffect, useRef } from "react";
 import { View, Text, Animated, Image, StatusBar } from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../navigation/RootNavigator";
+import { useAuth } from "../../context/AuthContext";
 
 type SplashScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, "Splash">;
+  navigation: NativeStackNavigationProp<RootStackParamList, "Login">;
 };
 
 export default function SplashScreen({ navigation }: SplashScreenProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
+  
+  // Get auth state - this will check for existing session
+  const { isAuthenticated, isVerified, isLoading } = useAuth();
 
   useEffect(() => {
+    // Start animations
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -33,8 +38,11 @@ export default function SplashScreen({ navigation }: SplashScreenProps) {
       useNativeDriver: false,
     }).start();
 
+    // Navigate after splash screen
     const timer = setTimeout(() => {
-      navigation.replace("Onboarding");
+      // RootNavigator will handle the routing based on isAuthenticated & isVerified
+      // This splash screen just needs to get out of the way
+      navigation.replace("Login");
     }, 2500);
 
     return () => clearTimeout(timer);
@@ -46,7 +54,7 @@ export default function SplashScreen({ navigation }: SplashScreenProps) {
   });
 
   return (
-    <View className="flex-1 bg-gray-900">
+    <View className="flex-1 bg-[#111827]">
       <StatusBar barStyle="light-content" backgroundColor="#111827" />
       
       {/* Centered Content */}
