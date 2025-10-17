@@ -91,7 +91,8 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
     try {
       const response = await signup(fullName, emailOrPhone, password);
 
-      if (response.data.requiresOTP) {
+      // FIXED: Changed from requiresOTP to requiresVerification
+      if (response.data.requiresVerification) {
         const phoneNumber = emailOrPhoneValidation.type === 'phone'
           ? `+254${emailOrPhone}`
           : emailOrPhone;

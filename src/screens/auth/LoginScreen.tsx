@@ -75,7 +75,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     try {
       const response = await login(emailOrPhone, password);
       
-      if (response.data.requiresOTP) {
+      // FIXED: Changed from requiresOTP to requiresVerification
+      if (response.data.requiresVerification) {
         // Navigate to OTP verification
         const phoneNumber = emailOrPhoneValidation.type === 'phone' 
           ? `+254${emailOrPhone}`

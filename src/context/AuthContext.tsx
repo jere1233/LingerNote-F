@@ -19,11 +19,13 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isVerified: boolean;
   login: (emailOrPhone: string, password: string) => Promise<any>;
   signup: (fullName: string, emailOrPhone: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
   setUser: (user: User | null) => void;
+  updateUserWithTokens: (userData: User, tokens: { accessToken: string; refreshToken: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,13 +47,17 @@ const TOKEN_CONFIG = {
 } as const;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUserState] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
   const activityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
+  // Derived states
+  const isAuthenticated = !!user;
+  const isVerified = user?.isVerified ?? false;
 
   // Initialize auth state on mount
   useEffect(() => {
@@ -79,7 +85,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user, isRefreshing]);
 
   /**
-   * Initialize authentication state
+   * Initialize authentication state on app start
+   * This is where persistent login happens - check for existing user & tokens
    */
   const initializeAuth = async () => {
     try {
@@ -91,7 +98,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         AsyncStorage.getItem(STORAGE_KEYS.LAST_ACTIVITY),
       ]);
 
+      // No stored session - user needs to login
       if (!accessToken || !storedUser) {
+        console.log('No stored session, showing login');
         setIsLoading(false);
         return;
       }
@@ -107,13 +116,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      // Parse and set user
+      // Parse user from storage
       const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
+
+      // IMPORTANT: Only allow verified users to be restored
+      if (!parsedUser.isVerified) {
+        console.log('User not verified, clearing session');
+        await clearAuthData();
+        setIsLoading(false);
+        return;
+      }
+
+      // Restore user
+      setUserState(parsedUser);
+      console.log('User restored from storage:', parsedUser.fullName);
 
       // Check if token needs refresh
       const shouldRefresh = await checkTokenExpiry();
       if (shouldRefresh) {
+        console.log('Token expiring soon, refreshing...');
         await refreshSession();
       }
 
@@ -142,7 +163,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           // Session timeout
           if (inactiveTime > TOKEN_CONFIG.SESSION_TIMEOUT) {
-            console.log('Session expired, logging out');
+            console.log('Session expired due to inactivity, logging out');
             await logout();
             return;
           }
@@ -201,6 +222,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const timeUntilRefresh = Math.max(0, refreshTime - currentTime);
 
     refreshTimerRef.current = setTimeout(async () => {
+      console.log('Auto-refreshing token');
       await refreshSession();
     }, timeUntilRefresh);
   };
@@ -277,6 +299,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Store new tokens and expiry
         await storeTokens(newTokens.accessToken, newTokens.refreshToken);
         await updateLastActivity();
+        console.log('Token refreshed successfully');
         return true;
       } else {
         await logout();
@@ -296,7 +319,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
    */
   const storeTokens = async (accessToken: string, refreshToken: string) => {
     try {
-      // Decode JWT to get expiry (basic decode, production would use jwt-decode library)
+      // Decode JWT to get expiry
       const tokenParts = accessToken.split('.');
       if (tokenParts.length === 3) {
         const payload = JSON.parse(atob(tokenParts[1]));
@@ -321,8 +344,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const response = await AuthAPI.login({ emailOrPhone, password });
       
-      // Only store user and tokens if OTP is not required
-      if (response.data.tokens && !response.data.requiresOTP) {
+      // Check if verification is required
+      if (response.data.requiresVerification) {
+        // Store user but don't sign them in yet
+        if (response.data.user) {
+          await AsyncStorage.setItem(
+            STORAGE_KEYS.USER,
+            JSON.stringify(response.data.user)
+          );
+        }
+        return response;
+      }
+
+      // Only store user and tokens if verified and tokens exist
+      if (response.data.tokens && response.data.user && response.data.user.isVerified) {
         await storeTokens(
           response.data.tokens.accessToken,
           response.data.tokens.refreshToken
@@ -332,7 +367,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           JSON.stringify(response.data.user)
         );
         await updateLastActivity();
-        setUser(response.data.user);
+        setUserState(response.data.user);
       }
       
       return response;
@@ -347,7 +382,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signup = async (fullName: string, emailOrPhone: string, password: string) => {
     try {
       const response = await AuthAPI.signup({ fullName, emailOrPhone, password });
-      // Tokens are provided after OTP verification
+      // Store user data but don't sign in - they need to verify OTP first
+      if (response.data.user) {
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.USER,
+          JSON.stringify(response.data.user)
+        );
+      }
       return response;
     } catch (error) {
       throw error;
@@ -356,13 +397,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   /**
    * Update user after OTP verification
+   * IMPORTANT: Only called when user is verified
    */
   const updateUserWithTokens = async (userData: User, tokens: { accessToken: string; refreshToken: string }) => {
     try {
+      // IMPORTANT: Only allow verified users
+      if (!userData.isVerified) {
+        console.warn('Attempted to store unverified user:', userData.id);
+        throw new Error('User must be verified before storing tokens');
+      }
+
       await storeTokens(tokens.accessToken, tokens.refreshToken);
       await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
       await updateLastActivity();
-      setUser(userData);
+      setUserState(userData);
+      console.log('User verified and stored:', userData.fullName);
     } catch (error) {
       console.error('Error updating user with tokens:', error);
       throw error;
@@ -381,8 +430,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         STORAGE_KEYS.TOKEN_EXPIRY,
         STORAGE_KEYS.LAST_ACTIVITY,
       ]);
-      setUser(null);
+      setUserState(null);
       clearTimers();
+      console.log('Auth data cleared');
     } catch (error) {
       console.error('Error clearing auth data:', error);
     }
@@ -410,12 +460,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
    */
   const setUserWithStorage = async (userData: User | null) => {
     if (userData) {
+      // Only store verified users
+      if (!userData.isVerified) {
+        console.warn('Attempted to store unverified user');
+        await clearAuthData();
+        return;
+      }
       await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
       await updateLastActivity();
     } else {
       await clearAuthData();
     }
-    setUser(userData);
+    setUserState(userData);
   };
 
   return (
@@ -423,12 +479,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user,
         isLoading,
-        isAuthenticated: !!user,
+        isAuthenticated,
+        isVerified,
         login,
         signup,
         logout,
         refreshSession,
         setUser: setUserWithStorage,
+        updateUserWithTokens,
       }}
     >
       {children}

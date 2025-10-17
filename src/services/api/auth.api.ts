@@ -13,11 +13,12 @@ export interface LoginResponse {
   message: string;
   data: {
     user: User;
-    tokens: {
+    tokens?: {
       accessToken: string;
       refreshToken: string;
     };
-    requiresOTP?: boolean;
+    requiresVerification?: boolean; // CHANGED: was requiresOTP
+    verificationType?: 'email' | 'phone';
   };
 }
 
@@ -32,7 +33,8 @@ export interface SignupResponse {
   message: string;
   data: {
     user: User;
-    requiresOTP: boolean;
+    requiresVerification: boolean; // CHANGED: was requiresOTP
+    verificationType: 'email' | 'phone';
   };
 }
 
@@ -137,8 +139,8 @@ export class AuthAPI {
         false // Don't include auth token for login
       );
 
-      // Store tokens if login successful and OTP not required
-      if (response.success && response.data.tokens && !response.data.requiresOTP) {
+      // Store tokens if login successful and verification not required
+      if (response.success && response.data.tokens && !response.data.requiresVerification) {
         await TokenManager.setAccessToken(response.data.tokens.accessToken);
         await TokenManager.setRefreshToken(response.data.tokens.refreshToken);
       }
