@@ -17,7 +17,7 @@ export interface LoginResponse {
       accessToken: string;
       refreshToken: string;
     };
-    requiresVerification?: boolean; // CHANGED: was requiresOTP
+    requiresVerification?: boolean;
     verificationType?: 'email' | 'phone';
   };
 }
@@ -33,7 +33,7 @@ export interface SignupResponse {
   message: string;
   data: {
     user: User;
-    requiresVerification: boolean; // CHANGED: was requiresOTP
+    requiresVerification: boolean;
     verificationType: 'email' | 'phone';
   };
 }
@@ -115,6 +115,24 @@ export interface RefreshTokenResponse {
   };
 }
 
+export interface GoogleAuthRequest {
+  idToken: string;
+}
+
+export interface GoogleAuthResponse {
+  success: boolean;
+  message: string;
+  data: {
+    user: User;
+    tokens: {
+      accessToken: string;
+      refreshToken: string;
+    };
+    isNewUser: boolean;
+    provider: string;
+  };
+}
+
 export interface User {
   id: string;
   fullName: string;
@@ -124,6 +142,8 @@ export interface User {
   createdAt: string;
   isVerified: boolean;
   status: string;
+  role?: string;
+  provider?: string;
 }
 
 // Auth API Service
@@ -324,17 +344,19 @@ export class AuthAPI {
   }
 
   /**
-   * Google OAuth login
+   * Google OAuth authentication
+   * Sends Google ID token to backend for verification
+   * Returns user data and tokens on success
    */
-  static async googleAuth(idToken: string): Promise<LoginResponse> {
+  static async googleAuth(data: GoogleAuthRequest): Promise<GoogleAuthResponse> {
     try {
-      const response = await apiClient.post<LoginResponse>(
+      const response = await apiClient.post<GoogleAuthResponse>(
         API_ENDPOINTS.AUTH.GOOGLE_AUTH,
-        { idToken },
-        false
+        data,
+        false // Don't include auth token for Google auth
       );
 
-      // Store tokens if login successful
+      // Store tokens if authentication successful
       if (response.success && response.data.tokens) {
         await TokenManager.setAccessToken(response.data.tokens.accessToken);
         await TokenManager.setRefreshToken(response.data.tokens.refreshToken);

@@ -14,8 +14,8 @@ export default function SplashScreen({ navigation }: SplashScreenProps) {
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   
-  // Get auth state - this will check for existing session
-  const { isAuthenticated, isVerified, isLoading } = useAuth();
+  // Get auth state - checks for existing session
+  const { isAuthenticated, isVerified } = useAuth();
 
   useEffect(() => {
     // Start animations
@@ -34,19 +34,30 @@ export default function SplashScreen({ navigation }: SplashScreenProps) {
 
     Animated.timing(progressAnim, {
       toValue: 1,
-      duration: 2000,
+      duration: 2500,
       useNativeDriver: false,
     }).start();
 
-    // Navigate after splash screen
+    // Navigate after splash finishes
     const timer = setTimeout(() => {
-      // RootNavigator will handle the routing based on isAuthenticated & isVerified
-      // This splash screen just needs to get out of the way
-      navigation.replace("Login");
+      // Check auth state and route accordingly
+      if (isAuthenticated && isVerified) {
+        // User already logged in and verified - go to Main
+        navigation.replace("Main");
+      } else if (isAuthenticated && !isVerified) {
+        // User logged in but not verified - go to OTP
+        navigation.replace("OTPVerification", {
+          phoneNumber: "", // Will be handled by OTP screen
+          isSignup: true,
+        });
+      } else {
+        // No user logged in - go to Login
+        navigation.replace("Login");
+      }
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [isAuthenticated, isVerified, navigation]);
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],

@@ -1,3 +1,4 @@
+// src/components/auth/SocialButton.tsx
 import React from 'react';
 import { TouchableOpacity, Text, View, ActivityIndicator } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -5,6 +6,7 @@ import Svg, { Path } from 'react-native-svg';
 interface SocialButtonProps {
   onPress: () => void;
   loading?: boolean;
+  disabled?: boolean;
 }
 
 const GoogleIcon = () => (
@@ -28,24 +30,32 @@ const GoogleIcon = () => (
   </Svg>
 );
 
-export default function SocialButton({ onPress, loading = false }: SocialButtonProps) {
+export default function SocialButton({ 
+  onPress, 
+  loading = false,
+  disabled = false 
+}: SocialButtonProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
       className="py-3.5 px-4 items-center justify-center min-h-[52px] border border-[#374151]"
       style={{
-        backgroundColor: '#1F2937',
+        backgroundColor: disabled ? '#111827' : '#1F2937',
         borderRadius: 26,
+        opacity: disabled ? 0.6 : 1,
       }}
-      activeOpacity={0.7}
-      disabled={loading}
+      activeOpacity={disabled ? 1 : 0.7}
+      disabled={loading || disabled}
     >
       {loading ? (
-        <ActivityIndicator color="#ffffff" />
+        <ActivityIndicator color="#ffffff" size="small" />
       ) : (
         <View className="flex-row items-center">
           <GoogleIcon />
-          <Text className="text-white text-base font-semibold ml-3">
+          <Text 
+            className="text-white text-base font-semibold ml-3"
+            numberOfLines={1}
+          >
             Continue with Google
           </Text>
         </View>

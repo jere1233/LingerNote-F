@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { User, Mail, Lock } from 'lucide-react-native';
 
@@ -20,13 +22,16 @@ import ErrorMessage from '../../components/common/ErrorMessage';
 import { validators, validateEmailOrPhone } from '../../utils/validators';
 import { useAuth } from '../../context/AuthContext';
 import { ApiError } from '../../services/api/api.client';
+import AuthAPI from '../../services/api/auth.api';
 
 type SignupScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Signup'>;
 };
 
+WebBrowser.maybeCompleteAuthSession();
+
 export default function SignupScreen({ navigation }: SignupScreenProps) {
-  const { signup } = useAuth();
+  const { signup, updateUserWithTokens } = useAuth();
   const [fullName, setFullName] = useState('');
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +41,60 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
     password?: string;
   }>({});
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [generalError, setGeneralError] = useState('');
+
+  // Google OAuth setup
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '',
+    redirectUri: process.env.EXPO_PUBLIC_GOOGLE_REDIRECT_URL || '',
+  });
+
+  // Handle Google auth response
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      handleGoogleSuccess(id_token);
+    } else if (response?.type === 'error') {
+      setGoogleLoading(false);
+      setGeneralError('Google signup was cancelled or failed');
+    }
+  }, [response]);
+
+  const handleGoogleSuccess = async (idToken: string) => {
+    try {
+      setGoogleLoading(true);
+      setGeneralError('');
+
+      // Send token to backend
+      const response = await AuthAPI.googleAuth({ idToken });
+
+      if (response.data.user && response.data.tokens) {
+        // Update auth context with user and tokens
+        await updateUserWithTokens(response.data.user, response.data.tokens);
+
+        // Navigate to main app
+        navigation.replace('Main');
+      }
+    } catch (error: any) {
+      if (error instanceof ApiError) {
+        switch (error.status) {
+          case 401:
+            setGeneralError('Google authentication failed. Please try again.');
+            break;
+          case 400:
+            setGeneralError(error.message || 'Invalid Google token');
+            break;
+          default:
+            setGeneralError(error.message || 'Google signup failed');
+        }
+      } else {
+        setGeneralError('Google signup failed. Please check your connection.');
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleFullNameChange = (text: string) => {
     setFullName(text);
@@ -91,7 +149,6 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
     try {
       const response = await signup(fullName, emailOrPhone, password);
 
-      // FIXED: Changed from requiresOTP to requiresVerification
       if (response.data.requiresVerification) {
         const phoneNumber = emailOrPhoneValidation.type === 'phone'
           ? `+254${emailOrPhone}`
@@ -125,8 +182,16 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
   };
 
   const handleGoogleSignup = async () => {
-    console.log('Google signup - To be implemented');
-    setGeneralError('Google signup coming soon!');
+    try {
+      setGeneralError('');
+      const result = await promptAsync();
+      if (result?.type !== 'success') {
+        setGeneralError('Google signup was cancelled');
+      }
+    } catch (error) {
+      console.error('Google signup error:', error);
+      setGeneralError('Failed to start Google signup');
+    }
   };
 
   return (
@@ -194,7 +259,7 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
             title="Create Account"
             onPress={handleSignup}
             loading={loading}
-            disabled={loading}
+            disabled={loading || googleLoading}
             className="mb-4"
             LoadingComponent={<ActivityIndicator size="small" color="#ffffff" />}
           />
@@ -207,12 +272,16 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
             <View className="flex-1 h-[1px] bg-[#374151]" />
           </View>
 
-          <SocialButton onPress={handleGoogleSignup} loading={false} />
+          <SocialButton
+            onPress={handleGoogleSignup}
+            loading={googleLoading}
+            disabled={!request || loading}
+          />
 
           <TouchableOpacity
             onPress={() => navigation.navigate('Login')}
             className="items-center py-4 mt-4"
-            disabled={loading}
+            disabled={loading || googleLoading}
           >
             <Text className="text-sm text-text-secondary">
               Already have an account?{' '}
