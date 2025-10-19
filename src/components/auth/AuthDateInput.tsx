@@ -1,15 +1,12 @@
-import React, { useState, useRef, useMemo, useCallback, memo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   Modal,
   ScrollView,
-  Animated,
-  Dimensions,
-  FlatList,
 } from 'react-native';
-import { Calendar, ChevronDown } from 'lucide-react-native';
+import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react-native';
 
 interface AuthDateInputProps {
   label: string;
@@ -20,69 +17,12 @@ interface AuthDateInputProps {
   maximumDate?: Date;
 }
 
-const { height: screenHeight } = Dimensions.get('window');
-
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-// Memoized Day Item Component
-const DayItem = memo(({ day, isSelected, onPress }: any) => (
-  <TouchableOpacity
-    onPress={() => onPress(day)}
-    activeOpacity={0.7}
-    className={`py-2 px-3 m-1 rounded-lg ${
-      isSelected ? 'bg-purple-500' : 'bg-white border border-gray-200'
-    }`}
-  >
-    <Text
-      className={`text-center font-semibold ${
-        isSelected ? 'text-white' : 'text-gray-900'
-      }`}
-    >
-      {String(day).padStart(2, '0')}
-    </Text>
-  </TouchableOpacity>
-));
-
-// Memoized Month Item Component
-const MonthItem = memo(({ month, index, isSelected, onPress }: any) => (
-  <TouchableOpacity
-    onPress={() => onPress(index)}
-    activeOpacity={0.7}
-    className={`py-2 px-3 m-1 rounded-lg ${
-      isSelected ? 'bg-purple-500' : 'bg-white border border-gray-200'
-    }`}
-  >
-    <Text
-      className={`text-center font-semibold text-xs ${
-        isSelected ? 'text-white' : 'text-gray-900'
-      }`}
-    >
-      {month.slice(0, 3)}
-    </Text>
-  </TouchableOpacity>
-));
-
-// Memoized Year Item Component
-const YearItem = memo(({ year, isSelected, onPress }: any) => (
-  <TouchableOpacity
-    onPress={() => onPress(year)}
-    activeOpacity={0.7}
-    className={`py-2 px-3 m-1 rounded-lg ${
-      isSelected ? 'bg-purple-500' : 'bg-white border border-gray-200'
-    }`}
-  >
-    <Text
-      className={`text-center font-semibold text-sm ${
-        isSelected ? 'text-white' : 'text-gray-900'
-      }`}
-    >
-      {year}
-    </Text>
-  </TouchableOpacity>
-));
+const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 export default function AuthDateInput({
   label,
@@ -92,144 +32,108 @@ export default function AuthDateInput({
   minimumDate,
   maximumDate,
 }: AuthDateInputProps) {
-  const [showPicker, setShowPicker] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-  const [selectedDay, setSelectedDay] = useState(value?.getDate() || 1);
-  const [selectedMonth, setSelectedMonth] = useState(value?.getMonth() || 0);
-  const [selectedYear, setSelectedYear] = useState(value?.getFullYear() || new Date().getFullYear());
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(value?.getMonth() || new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState(value?.getFullYear() || new Date().getFullYear());
+  const [tempSelectedDate, setTempSelectedDate] = useState<Date | null>(value);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  // Memoized years range - extends to 2100
-  const years = useMemo(() => {
-    const maxYear = maximumDate?.getFullYear() || 2100;
-    const minYear = minimumDate?.getFullYear() || 1900;
-    const yearsArray = [];
-    for (let i = maxYear; i >= minYear; i--) {
-      yearsArray.push(i);
-    }
-    return yearsArray;
-  }, [minimumDate, maximumDate]);
-
-  // Memoized days - only recalculates when month/year changes
-  const days = useMemo(() => {
-    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-    return Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  }, [selectedMonth, selectedYear]);
-
-  const formatDate = useCallback((date: Date | null) => {
+  const formatDate = (date: Date | null) => {
     if (!date) return '';
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  }, []);
+    return `${month}/${day}/${year}`;
+  };
 
-  const handleDateChange = useCallback(() => {
-    const newDate = new Date(selectedYear, selectedMonth, selectedDay);
-    onDateChange(newDate);
-    handleClose();
-  }, [selectedYear, selectedMonth, selectedDay, onDateChange]);
+  const getDaysInMonth = (month: number, year: number) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
 
-  const handlePress = useCallback(() => {
-    setShowPicker(true);
-    setIsFocused(true);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+  const getFirstDayOfMonth = (month: number, year: number) => {
+    return new Date(year, month, 1).getDay();
+  };
 
-  const handleClose = useCallback(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 150,
-      useNativeDriver: true,
-    }).start(() => {
-      setShowPicker(false);
-      setIsFocused(false);
-    });
-  }, [fadeAnim]);
+  const calendarDays = useMemo(() => {
+    const daysInMonth = getDaysInMonth(currentMonth, currentYear);
+    const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
+    const days = [];
 
-  const handleDayPress = useCallback((day: number) => {
-    setSelectedDay(day);
-  }, []);
-
-  const handleMonthPress = useCallback((month: number) => {
-    setSelectedMonth(month);
-  }, []);
-
-  const handleYearPress = useCallback((year: number) => {
-    setSelectedYear(year);
-  }, []);
-
-  // Render functions for FlatList (faster than map)
-  const renderDayItem = useCallback(({ item }: any) => (
-    <DayItem
-      day={item}
-      isSelected={selectedDay === item}
-      onPress={handleDayPress}
-    />
-  ), [selectedDay, handleDayPress]);
-
-  const renderMonthItem = useCallback(({ item, index }: any) => (
-    <MonthItem
-      month={item}
-      index={index}
-      isSelected={selectedMonth === index}
-      onPress={handleMonthPress}
-    />
-  ), [selectedMonth, handleMonthPress]);
-
-  const renderYearItem = useCallback(({ item }: any) => (
-    <YearItem
-      year={item}
-      isSelected={selectedYear === item}
-      onPress={handleYearPress}
-    />
-  ), [selectedYear, handleYearPress]);
-
-  const keyExtractor = useCallback((item: any, index: number) => {
-    if (typeof item === 'number' && item > 100) {
-      return `year-${item}`;
+    // Empty cells for days before month starts
+    for (let i = 0; i < firstDay; i++) {
+      days.push(null);
     }
-    return `item-${index}`;
-  }, []);
+
+    // Days of the month
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(i);
+    }
+
+    return days;
+  }, [currentMonth, currentYear]);
+
+  const handleDayPress = (day: number) => {
+    const newDate = new Date(currentYear, currentMonth, day);
+    setTempSelectedDate(newDate);
+  };
+
+  const handleSetDate = () => {
+    if (tempSelectedDate) {
+      onDateChange(tempSelectedDate);
+    }
+    setShowCalendar(false);
+  };
+
+  const handleCancel = () => {
+    setTempSelectedDate(value);
+    setShowCalendar(false);
+  };
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(currentYear - 1);
+    } else {
+      setCurrentMonth(currentMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(currentYear + 1);
+    } else {
+      setCurrentMonth(currentMonth + 1);
+    }
+  };
+
+  const isSelected = (day: number) => {
+    if (!tempSelectedDate) return false;
+    return (
+      tempSelectedDate.getDate() === day &&
+      tempSelectedDate.getMonth() === currentMonth &&
+      tempSelectedDate.getFullYear() === currentYear
+    );
+  };
 
   return (
     <View className="mb-4">
+      <Text className="text-sm text-gray-600 mb-2 font-medium">{label}</Text>
+      
       <TouchableOpacity
-        onPress={handlePress}
-        activeOpacity={0.7}
-        className={`flex-row items-center bg-white rounded-lg px-3 py-2 border-2 ${
-          error ? 'border-red-500' : isFocused ? 'border-purple-500' : 'border-gray-300'
+        onPress={() => setShowCalendar(true)}
+        className={`flex-row items-center bg-white rounded-lg px-3 py-3 border ${
+          error ? 'border-red-500' : 'border-gray-300'
         }`}
       >
-        <Calendar
-          size={18}
-          color={error ? '#ef4444' : isFocused ? '#a855f7' : '#9ca3af'}
-          className="mr-2"
-        />
-
-        <View className="flex-1">
-          <Text
-            className={`text-base font-semibold px-1 mx-1 py-2 ${
-              value ? 'text-gray-900' : 'text-gray-400'
-            }`}
-          >
-            {value ? formatDate(value) : label}
-          </Text>
-        </View>
-
-        <ChevronDown
-          size={18}
-          color={isFocused ? '#a855f7' : '#9ca3af'}
-        />
+        <Calendar size={18} color="#9ca3af" className="mr-2" />
+        <Text className={`flex-1 text-base ${value ? 'text-gray-900' : 'text-gray-400'}`}>
+          {value ? formatDate(value) : 'Select date'}
+        </Text>
+        <ChevronDown size={18} color="#9ca3af" />
       </TouchableOpacity>
 
       {error && (
-        <Text className="text-red-500 text-xs mt-2 ml-3 font-medium">
+        <Text className="text-red-500 text-xs mt-2 ml-1 font-medium">
           {error}
         </Text>
       )}
@@ -237,90 +141,98 @@ export default function AuthDateInput({
       <Modal
         transparent
         animationType="fade"
-        visible={showPicker}
-        onRequestClose={handleClose}
+        visible={showCalendar}
+        onRequestClose={() => setShowCalendar(false)}
       >
-        <Animated.View
-          style={{ opacity: fadeAnim }}
-          className="flex-1 bg-black/50 justify-end"
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setShowCalendar(false)}
+          className="flex-1 bg-black/50 justify-center items-center"
         >
-          <View className="bg-white rounded-t-3xl max-h-96">
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl w-11/12 max-w-sm overflow-hidden"
+          >
             {/* Header */}
-            <View className="flex-row justify-between items-center px-6 py-4 border-b border-gray-200">
-              <TouchableOpacity onPress={handleClose}>
-                <Text className="text-gray-500 font-semibold text-base">Cancel</Text>
+            <View className="bg-purple-500 px-5 py-4">
+              <View className="flex-row items-center justify-between">
+                <TouchableOpacity onPress={handlePrevMonth} className="p-2">
+                  <ChevronLeft size={24} color="#ffffff" />
+                </TouchableOpacity>
+                
+                <Text className="text-white text-lg font-bold">
+                  {MONTHS[currentMonth]} {currentYear}
+                </Text>
+                
+                <TouchableOpacity onPress={handleNextMonth} className="p-2">
+                  <ChevronRight size={24} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Calendar Grid */}
+            <View className="p-4">
+              {/* Day headers */}
+              <View className="flex-row mb-2">
+                {DAYS.map((day) => (
+                  <View key={day} className="flex-1 items-center">
+                    <Text className="text-gray-500 text-xs font-semibold">
+                      {day}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Calendar days */}
+              <View className="flex-row flex-wrap">
+                {calendarDays.map((day, index) => (
+                  <View key={index} className="w-[14.28%] aspect-square p-0.5">
+                    {day ? (
+                      <TouchableOpacity
+                        onPress={() => handleDayPress(day)}
+                        activeOpacity={0.7}
+                        className={`flex-1 items-center justify-center rounded-lg ${
+                          isSelected(day)
+                            ? 'bg-blue-500'
+                            : 'bg-transparent'
+                        }`}
+                      >
+                        <Text
+                          className={`text-base font-medium ${
+                            isSelected(day)
+                              ? 'text-white'
+                              : 'text-gray-900'
+                          }`}
+                        >
+                          {day}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View className="flex-1" />
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Footer */}
+            <View className="border-t border-gray-200 px-4 py-3 flex-row justify-end gap-2">
+              <TouchableOpacity
+                onPress={handleCancel}
+                className="px-6 py-2 rounded-lg"
+              >
+                <Text className="text-gray-600 font-semibold">Cancel</Text>
               </TouchableOpacity>
-              <Text className="text-xl font-bold text-gray-900">Select Date</Text>
-              <TouchableOpacity onPress={handleDateChange}>
-                <Text className="text-purple-500 font-semibold text-base">Done</Text>
+              <TouchableOpacity
+                onPress={handleSetDate}
+                className="px-6 py-2 bg-blue-500 rounded-lg"
+              >
+                <Text className="text-white font-semibold">Set</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Selected Date Preview */}
-            <View className="bg-gradient-to-r from-purple-50 to-blue-50 px-6 py-3 border-b border-gray-100">
-              <Text className="text-sm text-gray-600 font-medium">
-                {MONTHS[selectedMonth]} {selectedDay}, {selectedYear}
-              </Text>
-            </View>
-
-            {/* Picker Sections */}
-            <View className="flex-row px-4 py-4 gap-2">
-              {/* Day Picker */}
-              <View className="flex-1">
-                <Text className="text-xs font-semibold text-gray-500 mb-2 text-center uppercase tracking-wide">
-                  Day
-                </Text>
-                <FlatList
-                  data={days}
-                  renderItem={renderDayItem}
-                  keyExtractor={(item) => `day-${item}`}
-                  scrollEnabled={true}
-                  nestedScrollEnabled={true}
-                  removeClippedSubviews={true}
-                  initialNumToRender={10}
-                  maxToRenderPerBatch={15}
-                  updateCellsBatchingPeriod={50}
-                  className="bg-gray-50 rounded-lg border border-gray-200"
-                />
-              </View>
-
-              {/* Month Picker */}
-              <View className="flex-1">
-                <Text className="text-xs font-semibold text-gray-500 mb-2 text-center uppercase tracking-wide">
-                  Month
-                </Text>
-                <FlatList
-                  data={MONTHS}
-                  renderItem={renderMonthItem}
-                  keyExtractor={(_, index) => `month-${index}`}
-                  scrollEnabled={true}
-                  nestedScrollEnabled={true}
-                  removeClippedSubviews={true}
-                  className="bg-gray-50 rounded-lg border border-gray-200"
-                />
-              </View>
-
-              {/* Year Picker */}
-              <View className="flex-1">
-                <Text className="text-xs font-semibold text-gray-500 mb-2 text-center uppercase tracking-wide">
-                  Year
-                </Text>
-                <FlatList
-                  data={years}
-                  renderItem={renderYearItem}
-                  keyExtractor={(item) => `year-${item}`}
-                  scrollEnabled={true}
-                  nestedScrollEnabled={true}
-                  removeClippedSubviews={true}
-                  initialNumToRender={15}
-                  maxToRenderPerBatch={20}
-                  updateCellsBatchingPeriod={50}
-                  className="bg-gray-50 rounded-lg border border-gray-200"
-                />
-              </View>
-            </View>
-          </View>
-        </Animated.View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
