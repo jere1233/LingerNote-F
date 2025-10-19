@@ -16,6 +16,7 @@ import { RootStackParamList } from '../../navigation/RootNavigator';
 import { User, Mail, Lock } from 'lucide-react-native';
 
 import AuthInput from '../../components/auth/AuthInput';
+import AuthDateInput from '../../components/auth/AuthDateInput';
 import AuthButton from '../../components/auth/AuthButton';
 import SocialButton from '../../components/auth/SocialButton';
 import ErrorMessage from '../../components/common/ErrorMessage';
@@ -33,10 +34,12 @@ WebBrowser.maybeCompleteAuthSession();
 export default function SignupScreen({ navigation }: SignupScreenProps) {
   const { signup, updateUserWithTokens } = useAuth();
   const [fullName, setFullName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{
     fullName?: string;
+    dateOfBirth?: string;
     emailOrPhone?: string;
     password?: string;
   }>({});
@@ -66,14 +69,10 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
       setGoogleLoading(true);
       setGeneralError('');
 
-      // Send token to backend
       const response = await AuthAPI.googleAuth({ idToken });
 
       if (response.data.user && response.data.tokens) {
-        // Update auth context with user and tokens
         await updateUserWithTokens(response.data.user, response.data.tokens);
-
-        // Navigate to main app
         navigation.replace('Main');
       }
     } catch (error: any) {
@@ -104,6 +103,14 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
     if (generalError) setGeneralError('');
   };
 
+  const handleDateChange = (date: Date) => {
+    setDateOfBirth(date);
+    if (errors.dateOfBirth) {
+      setErrors({ ...errors, dateOfBirth: undefined });
+    }
+    if (generalError) setGeneralError('');
+  };
+
   const handleEmailOrPhoneChange = (text: string) => {
     setEmailOrPhone(text);
     if (errors.emailOrPhone) {
@@ -120,6 +127,18 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
     if (generalError) setGeneralError('');
   };
 
+  const validateAge = (birthDate: Date): boolean => {
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    return age >= 18;
+  };
+
   const handleSignup = async () => {
     setGeneralError('');
     const newErrors: typeof errors = {};
@@ -127,6 +146,12 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
     const nameValidation = validators.fullName(fullName);
     if (!nameValidation.valid) {
       newErrors.fullName = nameValidation.message;
+    }
+
+    if (!dateOfBirth) {
+      newErrors.dateOfBirth = 'Date of birth is required';
+    } else if (!validateAge(dateOfBirth)) {
+      newErrors.dateOfBirth = 'You must be at least 18 years old';
     }
 
     const emailOrPhoneValidation = validateEmailOrPhone(emailOrPhone);
@@ -194,6 +219,11 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
     }
   };
 
+  // Calculate maximum date (today) and minimum date (100 years ago for broader range)
+  const maxDate = new Date();
+  const minDate = new Date();
+  minDate.setFullYear(minDate.getFullYear() - 100);
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -234,6 +264,15 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
             onChangeText={handleFullNameChange}
             autoCapitalize="words"
             error={errors.fullName}
+          />
+
+          <AuthDateInput
+            label="Date of Birth"
+            value={dateOfBirth}
+            onDateChange={handleDateChange}
+            error={errors.dateOfBirth}
+            minimumDate={minDate}
+            maximumDate={maxDate}
           />
 
           <AuthInput

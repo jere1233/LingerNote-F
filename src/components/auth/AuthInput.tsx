@@ -70,9 +70,9 @@ export default function AuthInput({
   });
 
   return (
-    <View className="mb-6">
+    <View className="mb-4">
       <View
-        className={`flex-row items-center bg-white rounded-lg px-3 py-2 border-2 ${
+        className={`flex-row items-center bg-white rounded-lg px-3 py-1 border-2 ${
           error ? 'border-red-500' : isFocused ? 'border-purple-500' : 'border-gray-300'
         }`}
       >
@@ -104,7 +104,7 @@ export default function AuthInput({
           )}
 
           <TextInput
-            className="flex-1 text-gray-900 text-base py-3 font-medium"
+            className="flex-1 text-gray-900 text-base py-2 font-medium"
             placeholderTextColor="#d1d5db"
             value={value}
             onChangeText={onChangeText}
