@@ -4,6 +4,7 @@ import { createNativeStackNavigator, NativeStackScreenProps } from '@react-navig
 import { useAuth } from '../context/AuthContext';
 
 // Import screens
+import OnboardingScreen from '../screens/auth/OnboardingScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignupScreen from '../screens/auth/SignUpScreen';
 import OTPVerificationScreen from '../screens/auth/OTPVerificationScreen';
@@ -13,6 +14,7 @@ import MainNavigator from './MainNavigator';
 
 export type RootStackParamList = {
   // Auth screens
+  Onboarding: undefined;
   Login: undefined;
   Signup: undefined;
   OTPVerification: {
@@ -52,7 +54,7 @@ export default function RootNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: '#111827' },
+        contentStyle: { backgroundColor: '#FFFFFF' },
         animation: 'slide_from_right',
         gestureEnabled: true,
       }}
@@ -60,11 +62,15 @@ export default function RootNavigator() {
       {!isAuthenticated ? (
         // ========== AUTH STACK ==========
         // User not logged in at all
-        // Shows: Login, Signup, OTP, Forgot Password, Reset Password
+        // Shows: Onboarding, Login, Signup, OTP, Forgot Password, Reset Password
         <Stack.Group>
+          <Stack.Screen 
+            name="Onboarding" 
+            component={OnboardingScreen}
+          />
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Signup" component={SignupScreen} />
-          
+
           {/* OTP Verification for signup/login/forgot password flows */}
           <Stack.Screen
             name="OTPVerification"
@@ -73,7 +79,7 @@ export default function RootNavigator() {
               gestureEnabled: true,
             }}
           />
-          
+
           {/* Password Reset Flow */}
           <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
           <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
@@ -106,10 +112,8 @@ export default function RootNavigator() {
             animation: 'none',
           }}
         >
-          <Stack.Screen
-            name="Main"
-            component={MainNavigator}
-          />
+          
+          <Stack.Screen name="Main" component={MainNavigator} />
         </Stack.Group>
       )}
     </Stack.Navigator>

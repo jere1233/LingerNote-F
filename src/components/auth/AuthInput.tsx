@@ -8,7 +8,6 @@ import {
 } from 'react-native';
 import { LucideIcon } from 'lucide-react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
-
 interface AuthInputProps extends TextInputProps {
   label: string;
   icon?: LucideIcon;
@@ -18,7 +17,6 @@ interface AuthInputProps extends TextInputProps {
   prefix?: string;
   isPassword?: boolean;
 }
-
 export default function AuthInput({
   label,
   icon: Icon,
@@ -30,37 +28,29 @@ export default function AuthInput({
   ...textInputProps
 }: AuthInputProps) {
   const [showPassword, setShowPassword] = useState(false);
-
   return (
-    <View className="mb-4">
-      <Text className="text-sm text-text-secondary mb-2 font-medium">
+    <View className="mb-3">
+      <Text className="text-sm text-gray-700 mb-2 font-semibold">
         {label}
       </Text>
       
       <View
-        className={`flex-row items-center bg-surface rounded-xl px-3.5 border-2 ${
-          error
-            ? 'border-red-500'
-            : value
-            ? 'border-[#a855f7]'
-            : 'border-[#374151]'
-        }`}
+        className={`flex-row items-center bg-white rounded-lg px-3 border-2 border-black`}
       >
-        {Icon && <Icon size={18} color="#9ca3af" className="mr-2.5" />}
+        {Icon && <Icon size={18} color="#9ca3af" className="mr-2" />}
         
         {prefix && (
-          <Text className="text-text-secondary text-base mr-2">{prefix}</Text>
+          <Text className="text-gray-600 text-base mr-2">{prefix}</Text>
         )}
         
         <TextInput
-          className="flex-1 text-white text-base py-3 font-medium"
-          placeholderTextColor="#6b7280"
+          className="flex-1 text-gray-900 text-base py-3 font-medium"
+          placeholderTextColor="#d1d5db"
           value={value}
           onChangeText={onChangeText}
           secureTextEntry={isPassword && !showPassword}
           {...textInputProps}
         />
-
         {isPassword && (
           <TouchableOpacity
             onPress={() => setShowPassword(!showPassword)}
@@ -74,7 +64,6 @@ export default function AuthInput({
           </TouchableOpacity>
         )}
       </View>
-
       {error && (
         <Text className="text-red-500 text-xs mt-2 ml-1">{error}</Text>
       )}

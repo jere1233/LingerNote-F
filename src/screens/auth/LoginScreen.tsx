@@ -13,30 +13,29 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { User, Mail, Lock } from 'lucide-react-native';
+import { Mail, Lock } from 'lucide-react-native';
 
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
 import SocialButton from '../../components/auth/SocialButton';
 import ErrorMessage from '../../components/common/ErrorMessage';
-import { validators, validateEmailOrPhone } from '../../utils/validators';
+import { validateEmailOrPhone } from '../../utils/validators';
 import { useAuth } from '../../context/AuthContext';
 import { ApiError } from '../../services/api/api.client';
 import AuthAPI from '../../services/api/auth.api';
 
-type SignupScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Signup'>;
+type LoginScreenProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
 };
 
+// Link web browser to events
 WebBrowser.maybeCompleteAuthSession();
 
-export default function SignupScreen({ navigation }: SignupScreenProps) {
-  const { signup, updateUserWithTokens } = useAuth();
-  const [fullName, setFullName] = useState('');
+export default function LoginScreen({ navigation }: LoginScreenProps) {
+  const { login, updateUserWithTokens } = useAuth();
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{
-    fullName?: string;
     emailOrPhone?: string;
     password?: string;
   }>({});
@@ -57,7 +56,7 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
       handleGoogleSuccess(id_token);
     } else if (response?.type === 'error') {
       setGoogleLoading(false);
-      setGeneralError('Google signup was cancelled or failed');
+      setGeneralError('Google login was cancelled or failed');
     }
   }, [response]);
 
@@ -72,7 +71,7 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
       if (response.data.user && response.data.tokens) {
         // Update auth context with user and tokens
         await updateUserWithTokens(response.data.user, response.data.tokens);
-
+        
         // Navigate to main app
         navigation.replace('Main');
       }
@@ -86,22 +85,14 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
             setGeneralError(error.message || 'Invalid Google token');
             break;
           default:
-            setGeneralError(error.message || 'Google signup failed');
+            setGeneralError(error.message || 'Google login failed');
         }
       } else {
-        setGeneralError('Google signup failed. Please check your connection.');
+        setGeneralError('Google login failed. Please check your connection.');
       }
     } finally {
       setGoogleLoading(false);
     }
-  };
-
-  const handleFullNameChange = (text: string) => {
-    setFullName(text);
-    if (errors.fullName) {
-      setErrors({ ...errors, fullName: undefined });
-    }
-    if (generalError) setGeneralError('');
   };
 
   const handleEmailOrPhoneChange = (text: string) => {
@@ -120,23 +111,17 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
     if (generalError) setGeneralError('');
   };
 
-  const handleSignup = async () => {
+  const handleLogin = async () => {
     setGeneralError('');
     const newErrors: typeof errors = {};
-
-    const nameValidation = validators.fullName(fullName);
-    if (!nameValidation.valid) {
-      newErrors.fullName = nameValidation.message;
-    }
 
     const emailOrPhoneValidation = validateEmailOrPhone(emailOrPhone);
     if (!emailOrPhoneValidation.valid) {
       newErrors.emailOrPhone = emailOrPhoneValidation.message || 'Invalid input';
     }
 
-    const passwordValidation = validators.password(password);
-    if (!passwordValidation.valid) {
-      newErrors.password = passwordValidation.message;
+    if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -147,7 +132,7 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
     setLoading(true);
 
     try {
-      const response = await signup(fullName, emailOrPhone, password);
+      const response = await login(emailOrPhone, password);
 
       if (response.data.requiresVerification) {
         const phoneNumber = emailOrPhoneValidation.type === 'phone'
@@ -156,7 +141,7 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
 
         navigation.navigate('OTPVerification', {
           phoneNumber,
-          isSignup: true,
+          isSignup: false,
         });
       } else {
         navigation.replace('Main');
@@ -164,42 +149,45 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
     } catch (error: any) {
       if (error instanceof ApiError) {
         switch (error.status) {
-          case 409:
-            setGeneralError('An account with this email/phone already exists');
+          case 401:
+            setGeneralError('Invalid email/phone or password');
             break;
-          case 400:
-            setGeneralError(error.message || 'Invalid signup data. Please check your information');
+          case 404:
+            setGeneralError('No account found with these credentials');
+            break;
+          case 403:
+            setGeneralError('Account is suspended. Please contact support');
             break;
           default:
-            setGeneralError(error.message || 'Signup failed. Please try again.');
+            setGeneralError(error.message || 'Login failed. Please try again.');
         }
       } else {
-        setGeneralError('Signup failed. Please check your connection and try again.');
+        setGeneralError('Login failed. Please check your connection and try again.');
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSignup = async () => {
+  const handleGoogleLogin = async () => {
     try {
       setGeneralError('');
       const result = await promptAsync();
       if (result?.type !== 'success') {
-        setGeneralError('Google signup was cancelled');
+        setGeneralError('Google login was cancelled');
       }
     } catch (error) {
-      console.error('Google signup error:', error);
-      setGeneralError('Failed to start Google signup');
+      console.error('Google login error:', error);
+      setGeneralError('Failed to start Google login');
     }
   };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-background"
+      className="flex-1 bg-white"
     >
-      <StatusBar barStyle="light-content" backgroundColor="#111827" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
@@ -208,11 +196,11 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-12">
-          <Text className="text-4xl font-bold text-white mb-3">
-            Create Account
+          <Text className="text-4xl font-bold text-gray-900 mb-3">
+            Welcome Back
           </Text>
-          <Text className="text-base text-text-secondary">
-            Join Vyn today
+          <Text className="text-base text-gray-600">
+            Sign in to continue to Vyn
           </Text>
         </View>
 
@@ -226,15 +214,6 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
               className="mb-4"
             />
           )}
-
-          <AuthInput
-            label="Full Name"
-            icon={User}
-            value={fullName}
-            onChangeText={handleFullNameChange}
-            autoCapitalize="words"
-            error={errors.fullName}
-          />
 
           <AuthInput
             label="Email or Phone Number"
@@ -251,13 +230,23 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
             icon={Lock}
             value={password}
             onChangeText={handlePasswordChange}
+            placeholder="Enter your password"
             isPassword
             error={errors.password}
           />
 
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ForgotPassword')}
+            className="self-end -mt-2 mb-4"
+          >
+            <Text className="text-sm text-purple-500 font-semibold">
+              Forgot Password?
+            </Text>
+          </TouchableOpacity>
+
           <AuthButton
-            title="Create Account"
-            onPress={handleSignup}
+            title="Sign In"
+            onPress={handleLogin}
             loading={loading}
             disabled={loading || googleLoading}
             className="mb-4"
@@ -265,36 +254,30 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
           />
 
           <View className="flex-row items-center my-5">
-            <View className="flex-1 h-[1px] bg-[#374151]" />
-            <Text className="mx-4 text-sm text-text-tertiary font-semibold">
+            <View className="flex-1 h-[1px] bg-gray-300" />
+            <Text className="mx-4 text-sm text-gray-500 font-semibold">
               OR
             </Text>
-            <View className="flex-1 h-[1px] bg-[#374151]" />
+            <View className="flex-1 h-[1px] bg-gray-300" />
           </View>
 
           <SocialButton
-            onPress={handleGoogleSignup}
+            onPress={handleGoogleLogin}
             loading={googleLoading}
             disabled={!request || loading}
           />
 
           <TouchableOpacity
-            onPress={() => navigation.navigate('Login')}
+            onPress={() => navigation.navigate('Signup')}
             className="items-center py-4 mt-4"
             disabled={loading || googleLoading}
           >
-            <Text className="text-sm text-text-secondary">
-              Already have an account?{' '}
-              <Text className="text-primary font-semibold">Sign In</Text>
+            <Text className="text-sm text-gray-600">
+              Don't have an account?{' '}
+              <Text className="text-purple-500 font-semibold">Sign Up</Text>
             </Text>
           </TouchableOpacity>
         </View>
-
-        <Text className="text-xs text-text-tertiary text-center leading-5 mt-auto mb-6">
-          By continuing, you agree to our{' '}
-          <Text className="text-primary font-semibold">Terms of Service</Text> and{' '}
-          <Text className="text-primary font-semibold">Privacy Policy</Text>
-        </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );

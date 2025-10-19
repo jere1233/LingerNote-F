@@ -197,9 +197,9 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-background"
+      className="flex-1 bg-white"
     >
-      <StatusBar barStyle="light-content" backgroundColor="#111827" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
@@ -208,10 +208,10 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-12">
-          <Text className="text-4xl font-bold text-white mb-3">
+          <Text className="text-4xl font-bold text-gray-900 mb-3">
             Create Account
           </Text>
-          <Text className="text-base text-text-secondary">
+          <Text className="text-base text-gray-600">
             Join Vyn today
           </Text>
         </View>
@@ -265,11 +265,11 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
           />
 
           <View className="flex-row items-center my-5">
-            <View className="flex-1 h-[1px] bg-[#374151]" />
-            <Text className="mx-4 text-sm text-text-tertiary font-semibold">
+            <View className="flex-1 h-[1px] bg-gray-300" />
+            <Text className="mx-4 text-sm text-gray-500 font-semibold">
               OR
             </Text>
-            <View className="flex-1 h-[1px] bg-[#374151]" />
+            <View className="flex-1 h-[1px] bg-gray-300" />
           </View>
 
           <SocialButton
@@ -283,17 +283,17 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
             className="items-center py-4 mt-4"
             disabled={loading || googleLoading}
           >
-            <Text className="text-sm text-text-secondary">
+            <Text className="text-sm text-gray-600">
               Already have an account?{' '}
-              <Text className="text-primary font-semibold">Sign In</Text>
+              <Text className="text-purple-500 font-semibold">Sign In</Text>
             </Text>
           </TouchableOpacity>
         </View>
 
-        <Text className="text-xs text-text-tertiary text-center leading-5 mt-auto mb-6">
+        <Text className="text-xs text-gray-500 text-center leading-5 mt-auto mb-6">
           By continuing, you agree to our{' '}
-          <Text className="text-primary font-semibold">Terms of Service</Text> and{' '}
-          <Text className="text-primary font-semibold">Privacy Policy</Text>
+          <Text className="text-purple-500 font-semibold">Terms of Service</Text> and{' '}
+          <Text className="text-purple-500 font-semibold">Privacy Policy</Text>
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
