@@ -35,6 +35,12 @@ const interests: Interest[] = [
   { id: '10', icon: '🍳', label: 'Cooking' },
   { id: '11', icon: '💪', label: 'Fitness' },
   { id: '12', icon: '🖌️', label: 'Art' },
+  { id: '13', icon: '💰', label: 'Finance' },
+  { id: '14', icon: '🤖', label: 'AI & ML' },
+  { id: '15', icon: '☁️', label: 'Cloud' },
+  { id: '16', icon: '📊', label: 'Data Science' },
+  { id: '17', icon: '🎬', label: 'Video Edit' },
+  { id: '18', icon: '🎮', label: 'Gaming' },
 ];
 
 export default function InterestSelectionScreen({
@@ -96,7 +102,7 @@ export default function InterestSelectionScreen({
         </Text>
 
         {/* Interests Grid */}
-        <View className="flex-row flex-wrap gap-3 mb-6">
+        <View className="flex-row flex-wrap justify-center mb-6" style={{ gap: 12 }}>
           {interests.map((interest) => {
             const isSelected = selectedInterests.includes(interest.id);
             return (
@@ -108,7 +114,7 @@ export default function InterestSelectionScreen({
                     ? 'border-purple-600 bg-purple-600'
                     : 'border-gray-200'
                 }`}
-                style={{ width: '30%' }}
+                style={{ width: '29%' }}
                 activeOpacity={0.7}
               >
                 <Text className="text-3xl mb-1">{interest.icon}</Text>
