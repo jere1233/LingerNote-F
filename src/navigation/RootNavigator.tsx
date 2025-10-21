@@ -4,7 +4,11 @@ import { createNativeStackNavigator, NativeStackScreenProps } from '@react-navig
 import { useAuth } from '../context/AuthContext';
 
 // Import screens
-import OnboardingScreen from '../screens/auth/OnboardingScreen';
+import OnboardingScreen from '../screens/Onboarding/OnboardingScreen';
+import RoleSelectionScreen from '../screens/Onboarding/RoleSelectionScreen';
+import InterestSelectionScreen from '../screens/Onboarding/InterestSelectionScreen';
+import LocationPermissionScreen from '../screens/Onboarding/LocationPermissionScreen';
+import PaymentSetupScreen from '../screens/Onboarding/PaymentSetupScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignupScreen from '../screens/auth/SignUpScreen';
 import OTPVerificationScreen from '../screens/auth/OTPVerificationScreen';
@@ -13,8 +17,22 @@ import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import MainNavigator from './MainNavigator';
 
 export type RootStackParamList = {
-  // Auth screens
+  // Onboarding screens
   Onboarding: undefined;
+  RoleSelection: undefined;
+  InterestSelection: {
+    role: 'learner' | 'mentor';
+  };
+  LocationPermission: {
+    role: 'learner' | 'mentor';
+    interests: string[];
+  };
+  PaymentSetup: {
+    role: 'learner' | 'mentor';
+    interests: string[];
+    locationEnabled: boolean;
+  };
+  // Auth screens
   Login: undefined;
   Signup: undefined;
   OTPVerification: {
@@ -39,7 +57,7 @@ export type RootStackScreenProps<T extends keyof RootStackParamList> = NativeSta
 >;
 
 export default function RootNavigator() {
-  const { isLoading, isAuthenticated, isVerified } = useAuth();
+  const { isLoading, isAuthenticated, isVerified, hasOnboarded } = useAuth();
 
   // Show loading splash while checking for existing session
   if (isLoading) {
@@ -58,6 +76,8 @@ export default function RootNavigator() {
         animation: 'slide_from_right',
         gestureEnabled: true,
       }}
+      // If user has already onboarded, skip to Login screen
+      initialRouteName={!isAuthenticated && hasOnboarded ? 'Login' : 'Onboarding'}
     >
       {!isAuthenticated ? (
         // ========== AUTH STACK ==========
@@ -67,6 +87,22 @@ export default function RootNavigator() {
           <Stack.Screen 
             name="Onboarding" 
             component={OnboardingScreen}
+          />
+          <Stack.Screen 
+            name="RoleSelection" 
+            component={RoleSelectionScreen}
+          />
+          <Stack.Screen 
+            name="InterestSelection" 
+            component={InterestSelectionScreen}
+          />
+          <Stack.Screen 
+            name="LocationPermission" 
+            component={LocationPermissionScreen}
+          />
+          <Stack.Screen 
+            name="PaymentSetup" 
+            component={PaymentSetupScreen}
           />
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Signup" component={SignupScreen} />
@@ -112,7 +148,6 @@ export default function RootNavigator() {
             animation: 'none',
           }}
         >
-          
           <Stack.Screen name="Main" component={MainNavigator} />
         </Stack.Group>
       )}

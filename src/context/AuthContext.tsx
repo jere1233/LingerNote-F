@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, AppStateStatus } from 'react-native';
 import AuthAPI from '../services/api/auth.api';
 import { TokenManager } from '../services/api/api.client';
+import { hasCompletedOnboarding } from '../utils/onboardingStorage';
 
 interface User {
   id: string;
@@ -20,6 +21,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   isVerified: boolean;
+  hasOnboarded: boolean;
   login: (emailOrPhone: string, password: string) => Promise<any>;
   signup: (fullName: string, emailOrPhone: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
@@ -50,6 +52,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUserState] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasOnboarded, setHasOnboarded] = useState(false);
   
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
   const activityTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -91,6 +94,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const initializeAuth = async () => {
     try {
       setIsLoading(true);
+      
+      // Check if user has completed onboarding
+      const onboardingComplete = await hasCompletedOnboarding();
+      setHasOnboarded(onboardingComplete);
+      console.log('Onboarding status:', onboardingComplete);
       
       const [accessToken, storedUser, lastActivity] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN),
@@ -481,6 +489,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         isAuthenticated,
         isVerified,
+        hasOnboarded,
         login,
         signup,
         logout,
